@@ -9,6 +9,7 @@ import { Octokit } from '@octokit/rest';
 /**
  * Environment configuration schema
  */
+import { SanityArticleClient } from 'shared';
 const EnvSchema = z.object({
   PORT: z.string().default('3000'),
   SANITY_WEBHOOK_SECRET: z.string().min(1),
@@ -16,6 +17,11 @@ const EnvSchema = z.object({
   GITHUB_OWNER: z.string().min(1),
   GITHUB_REPO: z.string().min(1),
   NODE_ENV: z.string().default('development'),
+  // Sanity connection details
+  SANITY_PROJECT_ID: z.string().min(1),
+  SANITY_DATASET: z.string().min(1),
+  SANITY_TOKEN: z.string().min(1),
+  SANITY_API_VERSION: z.string().default('2024-01-01'),
 });
 
 /**
@@ -32,6 +38,8 @@ const SanityWebhookPayloadSchema = z.object({
       current: z.string(),
     })
     .optional(),
+  // Add content field to detect images
+  content: z.array(z.any()).optional(),
 });
 
 /**
@@ -44,6 +52,8 @@ const GitHubDispatchPayloadSchema = z.object({
     title: z.string().optional(),
     triggeredBy: z.string().default('sanity-webhook'),
     timestamp: z.string(),
+    hasImages: z.boolean().optional(),
+    translationStatus: z.array(z.any()).optional(),
   }),
 });
 
@@ -54,6 +64,7 @@ class WebhookServer {
   private app: express.Application;
   private octokit: Octokit;
   private config: z.infer<typeof EnvSchema>;
+  private sanityClient: SanityArticleClient;
 
   constructor() {
     // Validate environment
@@ -63,6 +74,16 @@ class WebhookServer {
     this.octokit = new Octokit({
       auth: this.config.GITHUB_TOKEN,
     });
+
+    // Initialize Sanity client
+    const sanityConfig = {
+      SANITY_PROJECT_ID: this.config.SANITY_PROJECT_ID,
+      SANITY_DATASET: this.config.SANITY_DATASET,
+      SANITY_TOKEN: this.config.SANITY_TOKEN,
+      SANITY_API_VERSION: this.config.SANITY_API_VERSION,
+      DEEPL_API_KEY: '', // Not needed for webhook
+    };
+    this.sanityClient = new SanityArticleClient(sanityConfig);
 
     // Initialize Express app
     this.app = express();
@@ -128,6 +149,89 @@ class WebhookServer {
   }
 
   /**
+   * Check if article should trigger smart translation
+   * Conditions: Japanese language + has images + not fully translated
+   */
+  private async shouldTriggerTranslation(documentId: string): Promise<{
+    shouldTrigger: boolean;
+    reason: string;
+    hasImages: boolean;
+    translationStatus?: any;
+  }> {
+    try {
+      // Get the full article document from Sanity
+      const article = await this.sanityClient.getArticle(documentId);
+      
+      if (!article) {
+        return {
+          shouldTrigger: false,
+          reason: 'Article not found',
+          hasImages: false,
+        };
+      }
+
+      // Check if article is Japanese
+      if (article.lang !== 'ja') {
+        return {
+          shouldTrigger: false,
+          reason: `Article language is '${article.lang}', not Japanese`,
+          hasImages: false,
+        };
+      }
+
+      // Check if article has images in content
+      const hasImages = article.content?.some((block: any) => block._type === 'image') || false;
+      
+      if (!hasImages) {
+        return {
+          shouldTrigger: false,
+          reason: 'Article has no images',
+          hasImages: false,
+        };
+      }
+
+      // Check translation status for all target languages
+      const targetLanguages = ['en', 'zh-cn', 'zh-tw', 'ko', 'fr', 'de', 'es', 'it', 'pt', 'ru', 'ar', 'hi', 'id', 'ms', 'th', 'vi', 'tl', 'tr', 'br'];
+      const translationStatus = await this.sanityClient.getTranslationStatus(documentId, targetLanguages as any);
+      
+      // Check if all translations already exist
+      const allTranslated = translationStatus.every((status: any) => status.exists);
+      
+      if (allTranslated) {
+        return {
+          shouldTrigger: false,
+          reason: 'All translations already exist',
+          hasImages: true,
+          translationStatus,
+        };
+      }
+
+      // All conditions met - trigger translation
+      const missingLanguages = translationStatus
+        .filter((status: any) => !status.exists)
+        .map((status: any) => status.language);
+
+      return {
+        shouldTrigger: true,
+        reason: `Smart trigger: Japanese article with images, missing translations for: ${missingLanguages.join(', ')}`,
+        hasImages: true,
+        translationStatus,
+      };
+    } catch (error) {
+      console.error('Error checking translation trigger conditions', {
+        documentId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      
+      return {
+        shouldTrigger: false,
+        reason: `Error checking conditions: ${error instanceof Error ? error.message : String(error)}`,
+        hasImages: false,
+      };
+    }
+  }
+
+  /**
    * Setup Express routes
    */
   private setupRoutes(): void {
@@ -165,13 +269,23 @@ class WebhookServer {
           lang: payload.lang,
         });
 
-        // Only process Japanese articles
-        if (payload.lang !== 'ja') {
-          console.log('Ignoring non-Japanese article', {
+        // Smart translation trigger - check conditions
+        const triggerCheck = await this.shouldTriggerTranslation(payload._id);
+        
+        console.log('Smart translation check', {
+          documentId: payload._id,
+          shouldTrigger: triggerCheck.shouldTrigger,
+          reason: triggerCheck.reason,
+          hasImages: triggerCheck.hasImages,
+        });
+
+        if (!triggerCheck.shouldTrigger) {
+          return res.json({ 
+            message: 'Smart trigger conditions not met',
+            reason: triggerCheck.reason,
             documentId: payload._id,
-            lang: payload.lang,
+            hasImages: triggerCheck.hasImages,
           });
-          return res.json({ message: 'Ignored non-Japanese article' });
         }
 
         // Trigger GitHub Actions workflow
@@ -180,8 +294,10 @@ class WebhookServer {
           client_payload: {
             documentId: payload._id,
             title: payload.title,
-            triggeredBy: 'sanity-webhook',
+            triggeredBy: 'smart-webhook',
             timestamp: new Date().toISOString(),
+            hasImages: triggerCheck.hasImages,
+            translationStatus: triggerCheck.translationStatus,
           },
         });
 

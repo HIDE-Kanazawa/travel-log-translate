@@ -10,6 +10,7 @@
   "scripts": {
     "translate": "pnpm --filter translate-cli run start",
     "sanity-translate": "pnpm --filter worker run start",
+    "content": "pnpm --filter content-publisher run start",
     "dev": "pnpm --filter translate-cli run dev",
     "build": "pnpm -r run build",
     "test": "pnpm -r run test",

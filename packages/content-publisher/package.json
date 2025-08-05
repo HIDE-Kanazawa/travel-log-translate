@@ -1,0 +1,36 @@
+{
+  "name": "content-publisher",
+  "version": "0.1.0",
+  "description": "Markdown to Sanity CMS publishing tool for travel blog articles",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "content": "dist/cli.js"
+  },
+  "scripts": {
+    "start": "node dist/cli.js",
+    "dev": "tsx src/cli.ts",
+    "build": "tsc",
+    "test": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "lint": "eslint src/**/*.ts",
+    "format": "prettier --write src/**/*.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "shared": "workspace:^",
+    "gray-matter": "^4.0.3",
+    "commander": "^11.1.0",
+    "zod": "^3.22.4",
+    "fast-glob": "^3.3.2",
+    "fs-extra": "^11.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.10",
+    "@types/fs-extra": "^11.0.4",
+    "tsx": "^4.7.0",  
+    "vitest": "^1.2.2",
+    "@vitest/coverage-v8": "^1.2.2",
+    "typescript": "^5.3.3"
+  }
+}
