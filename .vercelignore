@@ -1,0 +1,13 @@
+node_modules
+.env
+.env.local
+.git
+coverage
+tests
+*.test.ts
+*.test.js
+docs
+README.md
+.github
+content/articles
+.vscode

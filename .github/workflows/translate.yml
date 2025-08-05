@@ -1,0 +1,115 @@
+name: Smart Translation Workflow
+
+on:
+  repository_dispatch:
+    types: [sanity_article_ja]
+  workflow_dispatch:
+    inputs:
+      documentId:
+        description: 'Sanity document ID to translate'
+        required: true
+        type: string
+      dryRun:
+        description: 'Dry run mode'
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  translate:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Build packages
+        run: |
+          pnpm --filter shared build
+          pnpm --filter translate-cli build
+
+      - name: Extract document info
+        id: extract-info
+        run: |
+          if [ "${{ github.event_name }}" = "repository_dispatch" ]; then
+            DOCUMENT_ID="${{ github.event.client_payload.documentId }}"
+            TITLE="${{ github.event.client_payload.title }}"
+            TRIGGERED_BY="${{ github.event.client_payload.triggeredBy }}"
+            HAS_IMAGES="${{ github.event.client_payload.hasImages }}"
+          else
+            DOCUMENT_ID="${{ inputs.documentId }}"
+            TITLE="Manual trigger"
+            TRIGGERED_BY="workflow_dispatch"
+            HAS_IMAGES="true"
+          fi
+          
+          echo "document-id=$DOCUMENT_ID" >> $GITHUB_OUTPUT
+          echo "title=$TITLE" >> $GITHUB_OUTPUT
+          echo "triggered-by=$TRIGGERED_BY" >> $GITHUB_OUTPUT
+          echo "has-images=$HAS_IMAGES" >> $GITHUB_OUTPUT
+
+      - name: Run translation
+        env:
+          DEEPL_API_KEY: ${{ secrets.DEEPL_API_KEY }}
+          SANITY_PROJECT_ID: ${{ secrets.SANITY_PROJECT_ID }}
+          SANITY_DATASET: ${{ secrets.SANITY_DATASET }}
+          SANITY_TOKEN: ${{ secrets.SANITY_TOKEN }}
+          SANITY_API_VERSION: ${{ secrets.SANITY_API_VERSION }}
+        run: |
+          if [ "${{ inputs.dryRun }}" = "true" ]; then
+            echo "🔍 Dry run mode - checking translation conditions"
+            pnpm translate --document-id "${{ steps.extract-info.outputs.document-id }}" --dry-run
+          else
+            echo "🚀 Starting translation for document: ${{ steps.extract-info.outputs.document-id }}"
+            pnpm translate --document-id "${{ steps.extract-info.outputs.document-id }}" --target all
+          fi
+
+      - name: Commit translated files
+        if: ${{ inputs.dryRun != true }}
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          
+          # Add any new translation files
+          git add -A
+          
+          # Check if there are changes to commit
+          if git diff --staged --quiet; then
+            echo "No translation files to commit"
+          else
+            git commit -m "chore: add translations for ${{ steps.extract-info.outputs.title }}
+
+Triggered by: ${{ steps.extract-info.outputs.triggered-by }}
+Document ID: ${{ steps.extract-info.outputs.document-id }}
+Has images: ${{ steps.extract-info.outputs.has-images }}
+
+🤖 Generated with [Claude Code](https://claude.ai/code)
+
+Co-Authored-By: Claude <noreply@anthropic.com>"
+            
+            git push
+            echo "✅ Translations committed and pushed"
+          fi
+
+      - name: Summary
+        run: |
+          echo "## Translation Summary" >> $GITHUB_STEP_SUMMARY
+          echo "- **Document ID**: ${{ steps.extract-info.outputs.document-id }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Title**: ${{ steps.extract-info.outputs.title }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Triggered by**: ${{ steps.extract-info.outputs.triggered-by }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Has images**: ${{ steps.extract-info.outputs.has-images }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Dry run**: ${{ inputs.dryRun }}" >> $GITHUB_STEP_SUMMARY

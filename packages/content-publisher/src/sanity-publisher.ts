@@ -5,7 +5,7 @@ import type { ParsedArticle, ArticleMetadata, PublishingOptions, PublishingResul
  * Sanity CMS publisher for travel blog articles
  */
 export class SanityPublisher {
-  private sanityClient: SanityArticleClient;
+  public sanityClient: SanityArticleClient;
 
   constructor() {
     const config = validateEnvironment(process.env);

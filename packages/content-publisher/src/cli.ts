@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+import 'dotenv/config';
 import { Command } from 'commander';
 import glob from 'fast-glob';
 import { ContentPublisher } from './content-publisher.js';
@@ -291,9 +292,109 @@ program
   });
 
 // Handle unknown commands
+/**
+ * Smart translate command - check Sanity articles and trigger translations
+ */
+program
+  .command('smart-translate')
+  .description('Check Sanity articles for smart translation conditions and trigger if needed')
+  .option('-d, --dry-run', 'Show what would be translated without actually triggering')
+  .option('--document-id <id>', 'Check specific document ID only')
+  .option('--limit <number>', 'Limit number of articles to check', '50')
+  .option('--json', 'Output in JSON format')
+  .action(async (options) => {
+    try {
+      console.log('🔍 Checking smart translation conditions...\n');
+
+      const publisher = getPublisher();
+      
+      if (options.documentId) {
+        // Check specific document
+        const result = await publisher.checkSmartTranslationConditions(options.documentId);
+        
+        if (options.json) {
+          console.log(JSON.stringify(result, null, 2));
+          return;
+        }
+
+        const emoji = result.shouldTrigger ? '✅' : '❌';
+        console.log(`${emoji} Document ${options.documentId}:`);
+        console.log(`  Should trigger: ${result.shouldTrigger}`);
+        console.log(`  Reason: ${result.reason}`);
+        console.log(`  Has images: ${result.hasImages}`);
+        
+        if (result.translationStatus) {
+          const missing = result.translationStatus.filter((s: any) => !s.exists).length;
+          const total = result.translationStatus.length;
+          console.log(`  Translations: ${total - missing}/${total} complete`);
+        }
+
+        if (result.shouldTrigger && !options.dryRun) {
+          console.log('\n🚀 Triggering translation workflow...');
+          const triggerResult = await publisher.triggerSmartTranslation(options.documentId);
+          
+          if (triggerResult.success) {
+            console.log('✅ Translation workflow triggered successfully');
+          } else {
+            console.error(`❌ Failed to trigger translation: ${triggerResult.error}`);
+            process.exit(1);
+          }
+        } else if (result.shouldTrigger && options.dryRun) {
+          console.log('\n🔥 Would trigger translation (dry-run mode)');
+        }
+      } else {
+        // Check all recent Japanese articles
+        const results = await publisher.checkAllSmartTranslationConditions(parseInt(options.limit));
+        
+        if (options.json) {
+          console.log(JSON.stringify(results, null, 2));
+          return;
+        }
+
+        console.log(`📊 Smart Translation Check Results (${results.articles.length} articles):\n`);
+        
+        const triggerable = results.articles.filter(a => a.shouldTrigger);
+        console.log(`✅ Ready to translate: ${triggerable.length}`);
+        console.log(`❌ Not ready: ${results.articles.length - triggerable.length}\n`);
+
+        if (triggerable.length > 0) {
+          console.log('🔥 Articles ready for translation:');
+          triggerable.forEach(article => {
+            console.log(`  • ${article.title || article.documentId}`);
+            console.log(`    Reason: ${article.reason}`);
+            console.log(`    Missing languages: ${article.missingLanguages?.join(', ') || 'Unknown'}\n`);
+          });
+
+          if (!options.dryRun) {
+            console.log('🚀 Triggering translations...');
+            const triggerResults = await publisher.triggerMultipleSmartTranslations(
+              triggerable.map(a => a.documentId)
+            );
+            
+            console.log(`\n📊 Trigger Results:`);
+            console.log(`✅ Successful: ${triggerResults.successful}`);
+            console.log(`❌ Failed: ${triggerResults.failed}`);
+            
+            if (triggerResults.errors.length > 0) {
+              console.log('\n❌ Errors:');
+              triggerResults.errors.forEach(error => console.log(`  • ${error}`));
+            }
+          } else {
+            console.log('🔥 Would trigger translations (dry-run mode)');
+          }
+        } else {
+          console.log('✨ No articles currently meet smart translation conditions');
+        }
+      }
+    } catch (error) {
+      console.error(`❌ Smart translation check failed: ${error instanceof Error ? error.message : error}`);
+      process.exit(1);
+    }
+  });
+
 program.on('command:*', (operands) => {
   console.error(`❌ Unknown command: ${operands[0]}`);
-  console.log('Available commands: publish, status, list, validate');
+  console.log('Available commands: publish, status, list, validate, smart-translate');
   process.exit(1);
 });
 

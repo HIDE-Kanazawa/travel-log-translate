@@ -9,6 +9,16 @@ const mockOctokit = {
     createDispatchEvent: vi.fn(),
   },
 };
+// Mock SanityArticleClient
+const mockSanityClient = {
+  getArticle: vi.fn(),
+  getTranslationStatus: vi.fn(),
+  getJapaneseArticles: vi.fn(),
+};
+
+vi.mock('shared', () => ({
+  SanityArticleClient: vi.fn().mockImplementation(() => mockSanityClient),
+}));
 
 vi.mock('@octokit/rest', () => ({
   Octokit: vi.fn(() => mockOctokit),
@@ -25,7 +35,12 @@ describe('WebhookServer', () => {
     GITHUB_OWNER: 'test-owner',
     GITHUB_REPO: 'test-repo',
     NODE_ENV: 'test',
-  };
+    // Sanity connection details for smart translation
+    SANITY_PROJECT_ID: 'test-project',
+    SANITY_DATASET: 'test-dataset',
+    SANITY_TOKEN: 'test-sanity-token',
+    SANITY_API_VERSION: '2024-01-01',
+  };;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -259,6 +274,276 @@ describe('WebhookServer', () => {
       expect(response.body).toEqual(
         expect.objectContaining({
           error: 'Failed to trigger workflow',
+        })
+      );
+    });
+  });
+
+  describe('Smart translation trigger logic', () => {
+    const validPayload = {
+      _id: 'article-smart-123',
+      _type: 'article',
+      _rev: 'rev-456',
+      title: 'Japanese Article with Images',
+      lang: 'ja',
+      slug: { current: 'japanese-article-images' },
+      content: [
+        { _type: 'block', children: [{ text: 'Some text content' }] },
+        { _type: 'image', asset: { _ref: 'image-123' }, alt: 'Test image' },
+      ],
+    };
+
+    function createValidSignature(payload: any): string {
+      const body = JSON.stringify(payload);
+      const signature = crypto
+        .createHmac('sha256', testEnv.SANITY_WEBHOOK_SECRET)
+        .update(body)
+        .digest('hex');
+      return `sha256=${signature}`;
+    }
+
+    beforeEach(() => {
+      // Reset all mocks
+      vi.clearAllMocks();
+    });
+
+    it('should trigger translation for Japanese article with images and missing translations', async () => {
+      // Mock Sanity responses
+      mockSanityClient.getArticle.mockResolvedValue({
+        _id: 'article-smart-123',
+        _type: 'article',
+        title: 'Japanese Article with Images',
+        lang: 'ja',
+        content: [
+          { _type: 'block', children: [{ text: 'Some text content' }] },
+          { _type: 'image', asset: { _ref: 'image-123' }, alt: 'Test image' },
+        ],
+      });
+
+      mockSanityClient.getTranslationStatus.mockResolvedValue([
+        { language: 'en', exists: false },
+        { language: 'fr', exists: false },
+        { language: 'de', exists: true },
+      ]);
+
+      mockOctokit.repos.createDispatchEvent.mockResolvedValue({ status: 204 });
+
+      const response = await request(app)
+        .post('/webhook/sanity')
+        .set('sanity-webhook-signature', createValidSignature(validPayload))
+        .send(validPayload);
+
+      expect(response.status).toBe(200);
+      expect(response.body).toEqual(
+        expect.objectContaining({
+          message: 'Translation workflow triggered',
+          documentId: 'article-smart-123',
+        })
+      );
+
+      expect(mockSanityClient.getArticle).toHaveBeenCalledWith('article-smart-123');
+      expect(mockSanityClient.getTranslationStatus).toHaveBeenCalledWith(
+        'article-smart-123',
+        expect.arrayContaining(['en', 'fr', 'de', 'es', 'it', 'pt', 'ru', 'ar', 'hi', 'id', 'ms', 'th', 'vi', 'tl', 'tr', 'br', 'zh-cn', 'zh-tw', 'ko'])
+      );
+
+      expect(mockOctokit.repos.createDispatchEvent).toHaveBeenCalledWith({
+        owner: 'test-owner',
+        repo: 'test-repo',
+        event_type: 'sanity_article_ja',
+        client_payload: {
+          documentId: 'article-smart-123',
+          title: 'Japanese Article with Images',
+          triggeredBy: 'smart-webhook',
+          timestamp: expect.any(String),
+          hasImages: true,
+          translationStatus: expect.any(Array),
+        },
+      });
+    });
+
+    it('should NOT trigger translation for Japanese article without images', async () => {
+      const payloadNoImages = {
+        ...validPayload,
+        content: [
+          { _type: 'block', children: [{ text: 'Text only content' }] },
+        ],
+      };
+
+      mockSanityClient.getArticle.mockResolvedValue({
+        _id: 'article-smart-123',
+        _type: 'article',
+        title: 'Japanese Article No Images',
+        lang: 'ja',
+        content: [
+          { _type: 'block', children: [{ text: 'Text only content' }] },
+        ],
+      });
+
+      const response = await request(app)
+        .post('/webhook/sanity')
+        .set('sanity-webhook-signature', createValidSignature(payloadNoImages))
+        .send(payloadNoImages);
+
+      expect(response.status).toBe(200);
+      expect(response.body).toEqual(
+        expect.objectContaining({
+          message: 'Smart trigger conditions not met',
+          reason: 'Article has no images',
+          hasImages: false,
+        })
+      );
+
+      expect(mockOctokit.repos.createDispatchEvent).not.toHaveBeenCalled();
+    });
+
+    it('should NOT trigger translation for non-Japanese article', async () => {
+      const englishPayload = {
+        ...validPayload,
+        lang: 'en',
+        title: 'English Article with Images',
+      };
+
+      mockSanityClient.getArticle.mockResolvedValue({
+        _id: 'article-smart-123',
+        _type: 'article',
+        title: 'English Article with Images',
+        lang: 'en',
+        content: [
+          { _type: 'block', children: [{ text: 'Some text content' }] },
+          { _type: 'image', asset: { _ref: 'image-123' }, alt: 'Test image' },
+        ],
+      });
+
+      const response = await request(app)
+        .post('/webhook/sanity')
+        .set('sanity-webhook-signature', createValidSignature(englishPayload))
+        .send(englishPayload);
+
+      expect(response.status).toBe(200);
+      expect(response.body).toEqual(
+        expect.objectContaining({
+          message: 'Smart trigger conditions not met',
+          reason: `Article language is 'en', not Japanese`,
+          hasImages: false,
+        })
+      );
+
+      expect(mockOctokit.repos.createDispatchEvent).not.toHaveBeenCalled();
+    });
+
+    it('should NOT trigger translation when all translations already exist', async () => {
+      mockSanityClient.getArticle.mockResolvedValue({
+        _id: 'article-smart-123',
+        _type: 'article',
+        title: 'Japanese Article with Images',
+        lang: 'ja',
+        content: [
+          { _type: 'block', children: [{ text: 'Some text content' }] },
+          { _type: 'image', asset: { _ref: 'image-123' }, alt: 'Test image' },
+        ],
+      });
+
+      // Mock all translations as existing
+      const allTranslationsExist = [
+        'en', 'zh-cn', 'zh-tw', 'ko', 'fr', 'de', 'es', 'it', 'pt', 'ru', 
+        'ar', 'hi', 'id', 'ms', 'th', 'vi', 'tl', 'tr', 'br'
+      ].map(lang => ({ language: lang, exists: true }));
+
+      mockSanityClient.getTranslationStatus.mockResolvedValue(allTranslationsExist);
+
+      const response = await request(app)
+        .post('/webhook/sanity')
+        .set('sanity-webhook-signature', createValidSignature(validPayload))
+        .send(validPayload);
+
+      expect(response.status).toBe(200);
+      expect(response.body).toEqual(
+        expect.objectContaining({
+          message: 'Smart trigger conditions not met',
+          reason: 'All translations already exist',
+          hasImages: true,
+        })
+      );
+
+      expect(mockOctokit.repos.createDispatchEvent).not.toHaveBeenCalled();
+    });
+
+    it('should handle Sanity API errors gracefully', async () => {
+      mockSanityClient.getArticle.mockRejectedValue(new Error('Sanity API connection failed'));
+
+      const response = await request(app)
+        .post('/webhook/sanity')
+        .set('sanity-webhook-signature', createValidSignature(validPayload))
+        .send(validPayload);
+
+      expect(response.status).toBe(200);
+      expect(response.body).toEqual(
+        expect.objectContaining({
+          message: 'Smart trigger conditions not met',
+          reason: 'Error checking conditions: Sanity API connection failed',
+          hasImages: false,
+        })
+      );
+
+      expect(mockOctokit.repos.createDispatchEvent).not.toHaveBeenCalled();
+    });
+
+    it('should handle article not found', async () => {
+      mockSanityClient.getArticle.mockResolvedValue(null);
+
+      const response = await request(app)
+        .post('/webhook/sanity')
+        .set('sanity-webhook-signature', createValidSignature(validPayload))
+        .send(validPayload);
+
+      expect(response.status).toBe(200);
+      expect(response.body).toEqual(
+        expect.objectContaining({
+          message: 'Smart trigger conditions not met',
+          reason: 'Article not found',
+          hasImages: false,
+        })
+      );
+
+      expect(mockSanityClient.getArticle).toHaveBeenCalledWith('article-smart-123');
+      expect(mockOctokit.repos.createDispatchEvent).not.toHaveBeenCalled();
+    });
+
+    it('should include detailed translation status in GitHub payload', async () => {
+      const translationStatus = [
+        { language: 'en', exists: false },
+        { language: 'fr', exists: true },
+        { language: 'de', exists: false },
+        { language: 'es', exists: true },
+      ];
+
+      mockSanityClient.getArticle.mockResolvedValue({
+        _id: 'article-smart-123',
+        _type: 'article',
+        title: 'Japanese Article with Images',
+        lang: 'ja',
+        content: [
+          { _type: 'image', asset: { _ref: 'image-123' }, alt: 'Test image' },
+        ],
+      });
+
+      mockSanityClient.getTranslationStatus.mockResolvedValue(translationStatus);
+      mockOctokit.repos.createDispatchEvent.mockResolvedValue({ status: 204 });
+
+      const response = await request(app)
+        .post('/webhook/sanity')
+        .set('sanity-webhook-signature', createValidSignature(validPayload))
+        .send(validPayload);
+
+      expect(response.status).toBe(200);
+
+      expect(mockOctokit.repos.createDispatchEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          client_payload: expect.objectContaining({
+            hasImages: true,
+            translationStatus: translationStatus,
+          }),
         })
       );
     });
