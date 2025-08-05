@@ -1,7 +1,7 @@
 {
   "version": 2,
   "name": "travel-log-webhook",
-  "buildCommand": "pnpm install --frozen-lockfile && pnpm --filter shared build && pnpm --filter webhook build",
+  "buildCommand": "pnpm install --no-frozen-lockfile && pnpm --filter shared build && pnpm --filter webhook build",
   "builds": [
     {
       "src": "packages/webhook/api/index.ts",
