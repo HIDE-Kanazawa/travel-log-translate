@@ -185,10 +185,11 @@ jobs:
             TRANSLATED_FILES=$(git diff --staged --name-only | grep -E "-(en|zh-cn|zh-tw|ko|fr|de|es|it|pt|ru|ar|hi|id|ms|th|vi|tl|tr|br)\.md$" | wc -l)
             ORIGINAL_FILES=$(echo "${{ steps.japanese-files.outputs.japanese_files }}" | wc -w)
             
-            git commit -m "chore: add translations for ${ORIGINAL_FILES} article(s) (${TRANSLATED_FILES} translations)
-
-🤖 Generated with DeepL API
-Co-Authored-By: GitHub Actions <action@github.com>"
+            git commit -m "chore: add translations for ${ORIGINAL_FILES} article(s) (${TRANSLATED_FILES} translations)" \
+                       -m "" \
+                       -m "🤖 Generated with DeepL API" \
+                       -m "" \
+                       -m "Co-Authored-By: GitHub Actions <action@github.com>"
             
             git push
             
