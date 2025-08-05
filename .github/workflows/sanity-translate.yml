@@ -1,0 +1,245 @@
+name: Sanity Article Translation
+
+on:
+  repository_dispatch:
+    types: [sanity_article_ja]
+  workflow_dispatch:
+    inputs:
+      document_id:
+        description: 'Sanity document ID to translate'
+        required: true
+        type: string
+      force_retranslate:
+        description: 'Force re-translation even if translations exist'
+        type: boolean
+        default: false
+      dry_run:
+        description: 'Dry run - show what would be translated without actually translating'
+        type: boolean
+        default: false
+
+jobs:
+  translate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+
+      - name: Get pnpm store directory
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+      - name: Setup pnpm cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build packages
+        run: pnpm build
+
+      - name: Extract document ID and options
+        id: extract-params
+        run: |
+          if [ "${{ github.event_name }}" == "repository_dispatch" ]; then
+            echo "DOCUMENT_ID=${{ github.event.client_payload.documentId }}" >> $GITHUB_OUTPUT
+            echo "TITLE=${{ github.event.client_payload.title }}" >> $GITHUB_OUTPUT
+            echo "TRIGGERED_BY=${{ github.event.client_payload.triggeredBy }}" >> $GITHUB_OUTPUT
+            echo "FORCE_FLAG=" >> $GITHUB_OUTPUT
+            echo "DRY_RUN_FLAG=" >> $GITHUB_OUTPUT
+          else
+            echo "DOCUMENT_ID=${{ github.event.inputs.document_id }}" >> $GITHUB_OUTPUT
+            echo "TITLE=Manual Trigger" >> $GITHUB_OUTPUT
+            echo "TRIGGERED_BY=manual" >> $GITHUB_OUTPUT
+            if [ "${{ github.event.inputs.force_retranslate }}" == "true" ]; then
+              echo "FORCE_FLAG=--force" >> $GITHUB_OUTPUT
+            else
+              echo "FORCE_FLAG=" >> $GITHUB_OUTPUT
+            fi
+            if [ "${{ github.event.inputs.dry_run }}" == "true" ]; then
+              echo "DRY_RUN_FLAG=--dry-run" >> $GITHUB_OUTPUT
+            else
+              echo "DRY_RUN_FLAG=" >> $GITHUB_OUTPUT
+            fi
+          fi
+
+      - name: Validate document ID
+        run: |
+          if [ -z "${{ steps.extract-params.outputs.DOCUMENT_ID }}" ]; then
+            echo "❌ Document ID is required"
+            exit 1
+          fi
+          echo "📄 Document ID: ${{ steps.extract-params.outputs.DOCUMENT_ID }}"
+          echo "📝 Title: ${{ steps.extract-params.outputs.TITLE }}"
+          echo "🚀 Triggered by: ${{ steps.extract-params.outputs.TRIGGERED_BY }}"
+
+      - name: Check DeepL quota before translation
+        env:
+          DEEPL_API_KEY: ${{ secrets.DEEPL_API_KEY }}
+          SANITY_PROJECT_ID: ${{ secrets.SANITY_PROJECT_ID }}
+          SANITY_DATASET: ${{ secrets.SANITY_DATASET }}
+          SANITY_TOKEN: ${{ secrets.SANITY_WRITE_TOKEN }}
+        run: |
+          echo "🔍 Checking document stats and API quota..."
+          pnpm sanity-translate stats "${{ steps.extract-params.outputs.DOCUMENT_ID }}" --json > stats.json
+          
+          # Extract quota percentage from stats
+          QUOTA_PERCENTAGE=$(cat stats.json | jq -r '.deeplUsage.percentage // 0')
+          REMAINING_CHARS=$(cat stats.json | jq -r '.deeplUsage.remaining // 0')
+          ESTIMATED_CHARS=$(cat stats.json | jq -r '.characterCount // 0')
+          
+          echo "📊 Current quota usage: ${QUOTA_PERCENTAGE}%"
+          echo "⚡ Remaining characters: ${REMAINING_CHARS}"
+          echo "📏 Estimated characters needed: ${ESTIMATED_CHARS}"
+          
+          # Check if quota is critically low (>95%)
+          if [ "$(echo "$QUOTA_PERCENTAGE > 95" | bc -l)" -eq 1 ]; then
+            echo "❌ DeepL quota critically low (${QUOTA_PERCENTAGE}%). Aborting to prevent service disruption."
+            echo "💡 Current usage: ${QUOTA_PERCENTAGE}% of monthly limit"
+            echo "🔄 Translation will be retried when quota resets"
+            exit 20
+          fi
+          
+          # Warning if quota is high (>90%)
+          if [ "$(echo "$QUOTA_PERCENTAGE > 90" | bc -l)" -eq 1 ]; then
+            echo "⚠️ WARNING: DeepL quota high (${QUOTA_PERCENTAGE}%)"
+          fi
+
+      - name: Run Sanity translation
+        env:
+          DEEPL_API_KEY: ${{ secrets.DEEPL_API_KEY }}
+          SANITY_PROJECT_ID: ${{ secrets.SANITY_PROJECT_ID }}
+          SANITY_DATASET: ${{ secrets.SANITY_DATASET }}
+          SANITY_TOKEN: ${{ secrets.SANITY_WRITE_TOKEN }}
+        run: |
+          echo "🌍 Starting translation process..."
+          
+          # Run translation with JSON output for structured logging
+          pnpm sanity-translate "${{ steps.extract-params.outputs.DOCUMENT_ID }}" \
+            ${{ steps.extract-params.outputs.FORCE_FLAG }} \
+            ${{ steps.extract-params.outputs.DRY_RUN_FLAG }} \
+            --json \
+            --max-chars 450000 \
+            2>&1 | tee translation-log.json
+          
+          # Check if translation was successful
+          if [ $? -eq 0 ]; then
+            echo "✅ Translation completed successfully"
+          else
+            echo "❌ Translation failed with exit code $?"
+            exit $?
+          fi
+
+      - name: Post-translation validation
+        if: success()
+        env:
+          DEEPL_API_KEY: ${{ secrets.DEEPL_API_KEY }}
+          SANITY_PROJECT_ID: ${{ secrets.SANITY_PROJECT_ID }}
+          SANITY_DATASET: ${{ secrets.SANITY_DATASET }}
+          SANITY_TOKEN: ${{ secrets.SANITY_WRITE_TOKEN }}
+        run: |
+          echo "🔍 Validating translation results..."
+          
+          # Get updated stats
+          pnpm sanity-translate stats "${{ steps.extract-params.outputs.DOCUMENT_ID }}" --json > final-stats.json
+          
+          COMPLETED_TRANSLATIONS=$(cat final-stats.json | jq -r '.translationStatus | map(select(.exists)) | length')
+          TOTAL_LANGUAGES=$(cat final-stats.json | jq -r '.translationStatus | length')
+          FINAL_QUOTA=$(cat final-stats.json | jq -r '.deeplUsage.percentage')
+          
+          echo "📈 Translation Summary:"
+          echo "  • Completed: ${COMPLETED_TRANSLATIONS}/${TOTAL_LANGUAGES} languages"
+          echo "  • Final quota usage: ${FINAL_QUOTA}%"
+          
+          # Check if we have critical quota usage after translation
+          if [ "$(echo "$FINAL_QUOTA > 95" | bc -l)" -eq 1 ]; then
+            echo "⚠️ CRITICAL: DeepL quota now at ${FINAL_QUOTA}% - consider pausing translations"
+          fi
+
+      - name: Create workflow summary
+        if: always()
+        run: |
+          echo "# 🌍 Sanity Translation Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Document:** \`${{ steps.extract-params.outputs.DOCUMENT_ID }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Title:** ${{ steps.extract-params.outputs.TITLE }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Triggered by:** ${{ steps.extract-params.outputs.TRIGGERED_BY }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Timestamp:** $(date -u '+%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ -f "final-stats.json" ]; then
+            COMPLETED=$(cat final-stats.json | jq -r '.translationStatus | map(select(.exists)) | length // 0')
+            TOTAL=$(cat final-stats.json | jq -r '.translationStatus | length // 19')
+            QUOTA=$(cat final-stats.json | jq -r '.deeplUsage.percentage // 0')
+            
+            echo "## 📊 Results" >> $GITHUB_STEP_SUMMARY
+            echo "- **Languages translated:** ${COMPLETED}/${TOTAL}" >> $GITHUB_STEP_SUMMARY
+            echo "- **DeepL quota used:** ${QUOTA}%" >> $GITHUB_STEP_SUMMARY
+            
+            if [ "$(echo "$QUOTA > 90" | bc -l)" -eq 1 ]; then
+              echo "- ⚠️ **Quota warning:** Usage is high" >> $GITHUB_STEP_SUMMARY
+            fi
+          fi
+          
+          if [ "$?" -eq 0 ]; then
+            echo "- ✅ **Status:** Success" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- ❌ **Status:** Failed" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Handle translation errors
+        if: failure()
+        run: |
+          echo "❌ Translation workflow failed"
+          
+          # Log error details for debugging
+          if [ -f "translation-log.json" ]; then
+            echo "📋 Translation log:"
+            tail -20 translation-log.json
+          fi
+          
+          # Exit with appropriate code based on error type
+          EXIT_CODE=$?
+          case $EXIT_CODE in
+            10)
+              echo "💡 Validation error - check document structure"
+              ;;
+            20)
+              echo "💡 API quota/limit error - wait for quota reset"
+              ;;
+            30)
+              echo "💡 Connection error - check API credentials"
+              ;;
+            *)
+              echo "💡 General error - check logs for details"
+              ;;
+          esac
+          
+          exit $EXIT_CODE
+
+      - name: Clean up cache periodically
+        if: always()
+        env:
+          DEEPL_API_KEY: ${{ secrets.DEEPL_API_KEY }}
+        run: |
+          # Clean expired cache entries to keep cache size reasonable
+          echo "🧹 Cleaning up expired cache entries..."
+          pnpm sanity-translate cache --clear --stats --json

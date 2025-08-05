@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls:*)",
+      "Bash(mkdir:*)",
+      "Bash(pnpm:*)",
+      "Bash(mv:*)",
+      "Bash(pkill:*)",
+      "Bash(timeout 30s pnpm test)",
+      "Bash(npx vitest run:*)",
+      "Bash(git init:*)",
+      "Bash(git remote add:*)",
+      "Bash(touch:*)",
+      "Bash(git add:*)"
+    ],
+    "deny": []
+  }
+}
