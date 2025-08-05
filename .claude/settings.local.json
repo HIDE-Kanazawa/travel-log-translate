@@ -18,7 +18,8 @@
       "Bash(git tag:*)",
       "Bash(git remote set-url:*)",
       "WebFetch(domain:github.com)",
-      "Bash(yamllint:*)"
+      "Bash(yamllint:*)",
+      "Bash(rm:*)"
     ],
     "deny": []
   }
