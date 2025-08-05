@@ -11,7 +11,14 @@
       "Bash(git init:*)",
       "Bash(git remote add:*)",
       "Bash(touch:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(npm version:*)",
+      "Bash(git tag:*)",
+      "Bash(git remote set-url:*)",
+      "WebFetch(domain:github.com)",
+      "Bash(yamllint:*)"
     ],
     "deny": []
   }
