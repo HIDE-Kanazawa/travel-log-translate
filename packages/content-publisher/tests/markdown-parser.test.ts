@@ -23,14 +23,15 @@ describe('MarkdownParser', () => {
       const testFile = path.join(testDir, 'valid-article.md');
       const content = `---
 title: "Test Article"
-excerpt: "This is a test article"
 tags:
   - test
   - article
 lang: ja
 slug: test-article
 date: '2024-01-15'
-author: Test Author
+type: spot
+prefecture: "東京都"
+publishedAt: "2024-01-15T10:00:00.000Z"
 ---
 
 # Test Article
@@ -42,10 +43,12 @@ This is the content of the test article.`;
       const result = await parser.parseFile(testFile);
 
       expect(result.frontMatter.title).toBe('Test Article');
-      expect(result.frontMatter.excerpt).toBe('This is a test article');
       expect(result.frontMatter.tags).toEqual(['test', 'article']);
       expect(result.frontMatter.lang).toBe('ja');
       expect(result.frontMatter.slug).toBe('test-article');
+      expect(result.frontMatter.type).toBe('spot');
+      expect(result.frontMatter.prefecture).toBe('東京都');
+      expect(result.frontMatter.publishedAt).toBe('2024-01-15T10:00:00.000Z');
       expect(result.content).toBe('# Test Article\n\nThis is the content of the test article.');
       expect(result.originalPath).toBe(testFile);
       expect(result.contentLength).toBeGreaterThan(0);
@@ -70,13 +73,14 @@ lang: en
       const longContent = 'A'.repeat(15001);
       const content = `---
 title: "Long Article"
-excerpt: "This is a very long article"
 tags:
   - test
 lang: ja
 slug: long-article
 date: '2024-01-15'
-author: Test Author
+type: food
+prefecture: "大阪府"
+publishedAt: "2024-01-15T10:00:00.000Z"
 ---
 
 ${longContent}`;
@@ -118,12 +122,13 @@ Some text here.
       const validFile = path.join(testDir, 'valid.md');
       const validContent = `---
 title: "Valid Article"
-excerpt: "Valid content"
 tags: [test]
 lang: ja
 slug: valid
 date: '2024-01-15'
-author: Author
+type: transport
+prefecture: "神奈川県"
+publishedAt: "2024-01-15T10:00:00.000Z"
 ---
 
 Content`;
