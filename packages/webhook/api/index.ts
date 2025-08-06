@@ -3,7 +3,26 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import crypto from 'crypto';
 import { z } from 'zod';
 import { Octokit } from '@octokit/rest';
-import { SanityArticleClient } from '../../shared/dist/sanity-client.js';
+import { createClient, type SanityClient } from '@sanity/client';
+
+/**
+ * Sanity article type (simplified for webhook needs)
+ */
+interface SanityArticle {
+  _id: string;
+  _type: 'article';
+  title?: string;
+  lang?: string;
+  content?: Array<{
+    _type: string;
+    [key: string]: any;
+  }>;
+}
+
+/**
+ * Target languages for translation
+ */
+type TargetLanguage = 'en' | 'zh-cn' | 'zh-tw' | 'ko' | 'fr' | 'de' | 'es' | 'it' | 'pt' | 'ru' | 'ar' | 'hi' | 'id' | 'ms' | 'th' | 'vi' | 'tl' | 'tr' | 'br';
 
 /**
  * Environment configuration schema
@@ -57,7 +76,7 @@ const GitHubDispatchPayloadSchema = z.object({
 // Global instances for reuse
 let config: z.infer<typeof EnvSchema>;
 let octokit: Octokit;
-let sanityClient: SanityArticleClient;
+let sanityClient: SanityClient;
 
 /**
  * Initialize configuration and clients
@@ -70,14 +89,13 @@ function initializeServices() {
       auth: config.GITHUB_TOKEN,
     });
 
-    const sanityConfig = {
-      SANITY_PROJECT_ID: config.SANITY_PROJECT_ID,
-      SANITY_DATASET: config.SANITY_DATASET,
-      SANITY_TOKEN: config.SANITY_TOKEN,
-      SANITY_API_VERSION: config.SANITY_API_VERSION,
-      DEEPL_API_KEY: '', // Not needed for webhook
-    };
-    sanityClient = new SanityArticleClient(sanityConfig);
+    sanityClient = createClient({
+      projectId: config.SANITY_PROJECT_ID,
+      dataset: config.SANITY_DATASET,
+      token: config.SANITY_TOKEN,
+      apiVersion: config.SANITY_API_VERSION,
+      useCdn: false, // We need fresh data for webhooks
+    });
   }
 }
 
@@ -104,6 +122,41 @@ function verifyWebhookSignature(body: Buffer, signature: string): boolean {
 }
 
 /**
+ * Check if a translation document exists
+ */
+async function translationExists(baseDocumentId: string, language: TargetLanguage): Promise<boolean> {
+  const translatedId = `${baseDocumentId}-${language}`;
+  
+  try {
+    const doc = await sanityClient.getDocument(translatedId);
+    return doc !== null;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Get translation status for multiple languages
+ */
+async function getTranslationStatus(
+  baseDocumentId: string,
+  languages: TargetLanguage[]
+): Promise<Array<{
+  language: TargetLanguage;
+  exists: boolean;
+  documentId: string;
+}>> {
+  const checks = await Promise.all(
+    languages.map(async language => ({
+      language,
+      exists: await translationExists(baseDocumentId, language),
+      documentId: `${baseDocumentId}-${language}`,
+    }))
+  );
+  return checks;
+}
+
+/**
  * Check if article should trigger smart translation
  */
 async function shouldTriggerTranslation(documentId: string): Promise<{
@@ -113,7 +166,8 @@ async function shouldTriggerTranslation(documentId: string): Promise<{
   translationStatus?: any;
 }> {
   try {
-    const article = await sanityClient.getArticle(documentId);
+    // Get article directly from Sanity
+    const article = await sanityClient.getDocument(documentId) as SanityArticle | null;
     
     if (!article) {
       return {
@@ -144,11 +198,11 @@ async function shouldTriggerTranslation(documentId: string): Promise<{
     }
 
     // Check translation status for all target languages
-    const targetLanguages = ['en', 'zh-cn', 'zh-tw', 'ko', 'fr', 'de', 'es', 'it', 'pt', 'ru', 'ar', 'hi', 'id', 'ms', 'th', 'vi', 'tl', 'tr', 'br'];
-    const translationStatus = await sanityClient.getTranslationStatus(documentId, targetLanguages as any);
+    const targetLanguages: TargetLanguage[] = ['en', 'zh-cn', 'zh-tw', 'ko', 'fr', 'de', 'es', 'it', 'pt', 'ru', 'ar', 'hi', 'id', 'ms', 'th', 'vi', 'tl', 'tr', 'br'];
+    const translationStatus = await getTranslationStatus(documentId, targetLanguages);
     
     // Check if all translations already exist
-    const allTranslated = translationStatus.every((status: any) => status.exists);
+    const allTranslated = translationStatus.every((status) => status.exists);
     
     if (allTranslated) {
       return {
@@ -161,8 +215,8 @@ async function shouldTriggerTranslation(documentId: string): Promise<{
 
     // All conditions met - trigger translation
     const missingLanguages = translationStatus
-      .filter((status: any) => !status.exists)
-      .map((status: any) => status.language);
+      .filter((status) => !status.exists)
+      .map((status) => status.language);
 
     return {
       shouldTrigger: true,
