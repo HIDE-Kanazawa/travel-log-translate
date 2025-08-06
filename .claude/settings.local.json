@@ -31,7 +31,9 @@
       "mcp__serena__insert_before_symbol",
       "mcp__serena__replace_regex",
       "mcp__serena__insert_after_symbol",
-      "Bash(timeout 30s pnpm content smart-translate:*)"
+      "Bash(timeout 30s pnpm content smart-translate:*)",
+      "Bash(timeout 30s pnpm --filter webhook test)",
+      "Bash(node_modules/.bin/vitest:*)"
     ],
     "deny": []
   }

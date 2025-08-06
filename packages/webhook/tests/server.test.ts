@@ -96,6 +96,24 @@ describe('WebhookServer', () => {
     }
 
     it('should process valid Japanese article webhook', async () => {
+      // Mock Sanity responses for smart translation logic
+      mockSanityClient.getArticle.mockResolvedValue({
+        _id: 'article-123',
+        _type: 'article',
+        title: 'Test Article',
+        lang: 'ja',
+        content: [
+          { _type: 'block', children: [{ text: 'Some text content' }] },
+          { _type: 'image', asset: { _ref: 'image-123' }, alt: 'Test image' },
+        ],
+      });
+
+      mockSanityClient.getTranslationStatus.mockResolvedValue([
+        { language: 'en', exists: false },
+        { language: 'fr', exists: false },
+        { language: 'de', exists: true },
+      ]);
+
       mockOctokit.repos.createDispatchEvent.mockResolvedValue({ status: 204 });
 
       const response = await request(app)
@@ -118,8 +136,10 @@ describe('WebhookServer', () => {
         client_payload: {
           documentId: 'article-123',
           title: 'Test Article',
-          triggeredBy: 'sanity-webhook',
+          triggeredBy: 'smart-webhook',
           timestamp: expect.any(String),
+          hasImages: true,
+          translationStatus: expect.any(Array),
         },
       });
     });
@@ -147,13 +167,21 @@ describe('WebhookServer', () => {
     it('should ignore non-Japanese articles', async () => {
       const englishPayload = { ...validPayload, lang: 'en' };
 
+      // Mock Sanity response for smart trigger
+      mockSanityClient.getArticle.mockResolvedValue(englishPayload);
+
       const response = await request(app)
         .post('/webhook/sanity')
         .set('sanity-webhook-signature', createValidSignature(englishPayload))
         .send(englishPayload);
 
       expect(response.status).toBe(200);
-      expect(response.body).toEqual({ message: 'Ignored non-Japanese article' });
+      expect(response.body).toEqual({
+        message: 'Smart trigger conditions not met',
+        reason: "Article language is 'en', not Japanese",
+        documentId: englishPayload._id,
+        hasImages: false,
+      });
       expect(mockOctokit.repos.createDispatchEvent).not.toHaveBeenCalled();
     });
 
@@ -174,7 +202,27 @@ describe('WebhookServer', () => {
     });
 
     it('should handle GitHub API errors', async () => {
-      mockOctokit.repos.createDispatchEvent.mockRejectedValue(new Error('GitHub API error'));
+      // Mock Sanity responses for smart trigger to pass all conditions
+      mockSanityClient.getArticle.mockResolvedValue({
+        _id: 'article-123',
+        _type: 'article',
+        title: 'Test Article',
+        lang: 'ja',
+        content: [
+          { _type: 'block', children: [{ text: 'Some text content' }] },
+          { _type: 'image', asset: { _ref: 'image-123' }, alt: 'Test image' },
+        ],
+      });
+      
+      mockSanityClient.getTranslationStatus.mockResolvedValue([
+        { language: 'en', exists: false },
+        { language: 'fr', exists: false },
+      ]);
+      
+      // Mock GitHub API to fail
+      mockOctokit.repos.createDispatchEvent.mockRejectedValue(
+        new Error('GitHub API error')
+      );
 
       const response = await request(app)
         .post('/webhook/sanity')
@@ -197,6 +245,14 @@ describe('WebhookServer', () => {
         lang: 'ja',
       };
 
+      // Mock Sanity responses for smart trigger
+      mockSanityClient.getArticle.mockResolvedValue({
+        ...minimalPayload,
+        content: [{ _type: 'image' }], // Assume it has images
+      });
+      mockSanityClient.getTranslationStatus.mockResolvedValue([
+        { language: 'en', exists: false },
+      ]);
       mockOctokit.repos.createDispatchEvent.mockResolvedValue({ status: 204 });
 
       const response = await request(app)
@@ -210,6 +266,7 @@ describe('WebhookServer', () => {
           client_payload: expect.objectContaining({
             documentId: 'article-456',
             title: undefined, // Should handle missing title
+            hasImages: true,
           }),
         })
       );
