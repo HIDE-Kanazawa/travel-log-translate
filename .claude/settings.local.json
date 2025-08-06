@@ -37,7 +37,8 @@
       "mcp__serena__find_file",
       "Bash(gh workflow list:*)",
       "Bash(gh run list:*)",
-      "Bash(gh run view:*)"
+      "Bash(gh run view:*)",
+      "Bash(node:*)"
     ],
     "deny": []
   }
