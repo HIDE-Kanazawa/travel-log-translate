@@ -1,5 +1,4 @@
 #!/usr/bin/env node
-
 import { Command } from 'commander';
 import { TranslationEngine } from './translation-engine.js';
 import {

@@ -1,6 +1,6 @@
 import { promises as fs } from 'fs';
 import path from 'path';
-import { ensureDir, move, copy, pathExists } from 'fs-extra';
+import { ensureDir, move, pathExists } from 'fs-extra';
 import type { ArticleMetadata, ArticleStatus } from './types.js';
 
 /**
@@ -229,44 +229,5 @@ export class FileManager {
     return null;
   }
 
-  /**
-   * Create backup of article before operations
-   */
-  async createBackup(filePath: string): Promise<string> {
-    const backupDir = path.join(this.contentDir, '.backups');
-    await ensureDir(backupDir);
 
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const filename = path.basename(filePath);
-    const backupPath = path.join(backupDir, `${timestamp}-${filename}`);
-
-    await copy(filePath, backupPath);
-    return backupPath;
-  }
-
-  /**
-   * Clean old backups (older than 30 days)
-   */
-  async cleanOldBackups(): Promise<void> {
-    const backupDir = path.join(this.contentDir, '.backups');
-    
-    try {
-      if (!(await pathExists(backupDir))) return;
-
-      const files = await fs.readdir(backupDir);
-      const thirtyDaysAgo = new Date();
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
-      for (const file of files) {
-        const filePath = path.join(backupDir, file);
-        const stat = await fs.stat(filePath);
-        
-        if (stat.mtime < thirtyDaysAgo) {
-          await fs.unlink(filePath);
-        }
-      }
-    } catch {
-      // Ignore cleanup errors
-    }
-  }
 }

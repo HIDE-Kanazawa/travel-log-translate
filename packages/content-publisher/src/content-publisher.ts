@@ -64,13 +64,7 @@ export class ContentPublisher {
         };
       }
 
-      // Step 4: Create backup before publishing
-      if (!options.dryRun) {
-        await this.fileManager.createBackup(markdownPath);
-        console.log(`💾 Created backup of ${markdownPath}`);
-      }
-
-      // Step 5: Publish to Sanity
+      // Step 4: Publish to Sanity
       if (!this.sanityPublisher) {
         throw new Error('Sanity publisher not initialized. Cannot publish in validate-only mode.');
       }
@@ -82,7 +76,7 @@ export class ContentPublisher {
 
       console.log(`🚀 Published to Sanity: ${publishResult.sanityDocumentId}`);
 
-      // Step 6: Move to published directory (unless dry run)
+      // Step 5: Move to published directory (unless dry run)
       if (!options.dryRun && options.moveToPublished !== false && publishResult.metadata) {
         const publishedPath = await this.fileManager.moveToPublished(
           markdownPath,
@@ -93,9 +87,6 @@ export class ContentPublisher {
         // Update metadata with new path
         publishResult.metadata.publishedPath = publishedPath;
       }
-
-      // Step 7: Clean old backups
-      await this.fileManager.cleanOldBackups();
 
       console.log(`✨ Successfully published "${article.frontMatter.title}"`);
 

@@ -56,11 +56,11 @@ travel-log-translate/
    - ChatGPT/Claude等で日本語記事生成・チェック完了
    
 2. **記事配置**
-   - `content/articles/ready/article-name.md` に完成記事を配置
+   - `content/articles/ready/[記事ファイル名].md` に完成記事を配置
    
 3. **Sanity投稿**
    ```bash
-   pnpm content publish content/articles/ready/article-name.md
+   pnpm content publish content/articles/ready/[記事ファイル名].md
    ```
    - Front-matter解析してSanity CMSにドキュメント作成
    - Vercel自動デプロイでブログ公開
@@ -107,13 +107,16 @@ cp .env.example .env                       # 環境変数ファイル作成
 ### **記事投稿コマンド**
 ```bash
 # 記事をSanity CMSに投稿
-pnpm content publish content/articles/ready/article-name.md
+pnpm content publish content/articles/ready/[記事ファイル名].md
 
 # バッチ投稿
 pnpm content publish content/articles/ready/*.md
 
 # ドライラン（実際の投稿なし）
-pnpm content publish article.md --dry-run
+pnpm content publish [記事ファイルパス] --dry-run
+
+# 強制上書き（同一スラッグの記事が存在する場合）
+pnpm content publish [記事ファイルパス] --force
 ```
 
 ### **翻訳・監視コマンド**

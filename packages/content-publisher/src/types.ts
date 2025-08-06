@@ -13,7 +13,13 @@ export const ArticleFrontMatterSchema = z.object({
   slug: z.string().min(1, 'Slug is required'),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be in YYYY-MM-DD format'),
   author: z.string().min(1, 'Author is required'),
-});
+  type: z.enum(['spot', 'food', 'transport', 'hotel', 'note'], {
+    errorMap: () => ({ message: 'Type must be one of: spot, food, transport, hotel, note' }),
+  }),
+  placeName: z.string().min(1, 'Place name is required'),
+  prefecture: z.string().min(1, 'Prefecture is required'),
+  publishedAt: z.string().datetime({ message: 'Published date must be in ISO format' }),
+});;
 
 export type ArticleFrontMatter = z.infer<typeof ArticleFrontMatterSchema>;
 

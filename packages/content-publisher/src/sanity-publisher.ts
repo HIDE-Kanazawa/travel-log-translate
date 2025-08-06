@@ -31,28 +31,8 @@ export class SanityPublisher {
       // Convert markdown content to Portable Text blocks
       const portableTextBlocks = this.convertToPortableText(article.content);
 
-      // Use SanityArticleClient's createOrUpdateTranslation method
-      // For new articles, we create a base Japanese document first
-      const baseDocument = {
-        _id: `article-${Date.now()}`, // Generate unique ID
-        _type: 'article' as const,
-        title: article.frontMatter.title,
-        slug: {
-          _type: 'slug' as const,
-          current: article.frontMatter.slug,
-        },
-        excerpt: article.frontMatter.excerpt,
-        content: portableTextBlocks,
-        lang: 'ja' as const,
-        tags: article.frontMatter.tags,
-        publishedAt: article.frontMatter.date,
-        // For now, create a reference to a default author or handle author differently
-        author: {
-          _type: 'reference' as const,
-          _ref: 'default-author', // This would need to be a real author document ID
-        },
-        featured: false,
-      };
+      // Generate unique ID for new article
+      const articleId = `article-${Date.now()}-ja`;
 
       // Check if article with same slug already exists
       const existingArticles = await this.sanityClient.getJapaneseArticles(1000);
@@ -65,20 +45,24 @@ export class SanityPublisher {
         };
       }
 
-      // Use the existing document ID if forcing update
-      if (existingDoc && options.force) {
-        baseDocument._id = existingDoc._id;
-      }
+      // Use existing document ID if forcing update
+      const finalArticleId = (existingDoc && options.force) ? existingDoc._id : articleId;
 
-      // For now, we'll create the document using the translation method
-      // This is a temporary approach - ideally we'd have a direct create method
-      const result = await this.sanityClient.createOrUpdateTranslation(
-        baseDocument,
-        article.frontMatter.title,
-        article.frontMatter.excerpt,
-        portableTextBlocks,
-        article.frontMatter.tags,
-        'ja' as any, // This is a bit of a hack since ja isn't in TargetLanguage
+      // Create the base Japanese article using the new createBaseArticle method
+      const result = await this.sanityClient.createBaseArticle(
+        {
+          _id: finalArticleId,
+          title: article.frontMatter.title,
+          slug: article.frontMatter.slug,
+          excerpt: article.frontMatter.excerpt,
+          content: portableTextBlocks,
+          tags: article.frontMatter.tags,
+          publishedAt: article.frontMatter.publishedAt,
+          featured: false,
+          type: article.frontMatter.type,
+          placeName: article.frontMatter.placeName,
+          prefecture: article.frontMatter.prefecture,
+        },
         options.dryRun || false
       );
 

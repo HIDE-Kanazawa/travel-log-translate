@@ -159,6 +159,101 @@ export class SanityArticleClient {
   }
 
   /**
+   * Create a new Japanese base article
+   */
+  async createBaseArticle(
+    article: {
+      _id: string;
+      title: string;
+      slug: string;
+      excerpt: string;
+      content: any[];
+      tags: string[];
+      publishedAt?: string;
+      author?: { _type: 'reference'; _ref: string };
+      featured?: boolean;
+      type?: string;
+      placeName?: string;
+      prefecture?: string;
+    },
+    dryRun = false
+  ): Promise<{
+    documentId: string;
+    wasCreated: boolean;
+    operation: 'create' | 'update' | 'skip';
+  }> {
+    // Check if document already exists
+    const existingDoc = await this.getArticle(article._id);
+
+    if (existingDoc) {
+      return {
+        documentId: article._id,
+        wasCreated: false,
+        operation: 'skip',
+      };
+    }
+
+    // Prepare the base document
+    const baseDoc: Partial<SanityArticle> = {
+      _id: article._id,
+      _type: 'article',
+      title: article.title,
+      slug: {
+        _type: 'slug',
+        current: article.slug,
+      },
+      excerpt: article.excerpt,
+      content: article.content,
+      lang: 'ja',
+      tags: article.tags,
+      publishedAt: article.publishedAt || new Date().toISOString(),
+      featured: article.featured || false,
+    };
+
+    // Add optional fields if provided
+    if (article.author) {
+      baseDoc.author = article.author;
+    }
+    
+    // Add custom fields that might be in Sanity schema
+    if (article.type) {
+      (baseDoc as any).type = article.type;
+    }
+    
+    if (article.placeName) {
+      (baseDoc as any).placeName = article.placeName;
+    }
+    
+    if (article.prefecture) {
+      (baseDoc as any).prefecture = article.prefecture;
+    }
+
+    if (dryRun) {
+      console.log(`[DRY RUN] Would create base article: ${article._id}`);
+      return {
+        documentId: article._id,
+        wasCreated: true,
+        operation: 'create',
+      };
+    }
+
+    try {
+      // Use createIfNotExists to avoid conflicts
+      await this.client.createIfNotExists(baseDoc as any);
+
+      return {
+        documentId: article._id,
+        wasCreated: true,
+        operation: 'create',
+      };
+    } catch (error) {
+      throw new Error(
+        `Failed to create base article: ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
+  }
+
+  /**
    * Get all Japanese articles (master documents)
    */
   async getJapaneseArticles(limit = 100): Promise<SanityArticle[]> {

@@ -1,6 +1,14 @@
 #!/usr/bin/env node
 
-import 'dotenv/config';
+import { config } from 'dotenv';
+import { resolve, dirname } from 'path';
+import { fileURLToPath } from 'url';
+
+// Load .env from project root - find it relative to this package
+const currentFile = fileURLToPath(import.meta.url);
+const packageRoot = dirname(dirname(currentFile)); // Go up two levels from dist/cli.js
+const projectRoot = resolve(packageRoot, '../../..'); // Go up to project root
+config({ path: resolve(projectRoot, '.env') });
 import { Command } from 'commander';
 import glob from 'fast-glob';
 import { ContentPublisher } from './content-publisher.js';
