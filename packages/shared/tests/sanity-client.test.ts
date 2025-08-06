@@ -34,7 +34,6 @@ describe('SanityArticleClient', () => {
     _type: 'article',
     title: 'テスト記事',
     slug: { _type: 'slug', current: 'test-article' },
-    excerpt: 'テスト記事の概要',
     content: [
       {
         _type: 'block',
@@ -43,6 +42,9 @@ describe('SanityArticleClient', () => {
       },
     ],
     lang: 'ja',
+    publishedAt: '2025-01-20T10:00:00.000Z',
+    type: 'spot',
+    prefecture: '東京都',
     tags: ['テスト', 'サンプル'],
   };
 
@@ -138,7 +140,6 @@ describe('SanityArticleClient', () => {
   describe('createOrUpdateTranslation', () => {
     const translatedData = {
       title: 'Test Article',
-      excerpt: 'Test article summary',
       content: [
         {
           _type: 'block',
@@ -155,7 +156,7 @@ describe('SanityArticleClient', () => {
       const result = await client.createOrUpdateTranslation(
         mockArticle,
         translatedData.title,
-        translatedData.excerpt,
+        undefined,
         translatedData.content,
         translatedData.tags,
         'en'
@@ -177,7 +178,7 @@ describe('SanityArticleClient', () => {
       const result = await client.createOrUpdateTranslation(
         mockArticle,
         translatedData.title,
-        translatedData.excerpt,
+        undefined,
         translatedData.content,
         translatedData.tags,
         'en'
@@ -207,7 +208,7 @@ describe('SanityArticleClient', () => {
       const result = await client.createOrUpdateTranslation(
         mockArticle,
         translatedData.title,
-        translatedData.excerpt,
+        undefined,
         translatedData.content,
         translatedData.tags,
         'fr',
@@ -231,7 +232,7 @@ describe('SanityArticleClient', () => {
         client.createOrUpdateTranslation(
           mockArticle,
           translatedData.title,
-          translatedData.excerpt,
+          undefined,
           translatedData.content,
           translatedData.tags,
           'de'
@@ -242,7 +243,10 @@ describe('SanityArticleClient', () => {
 
   describe('getJapaneseArticles', () => {
     it('should fetch Japanese master articles', async () => {
-      const mockArticles = [mockArticle, { ...mockArticle, _id: 'article-456' }];
+      const mockArticles = [
+        mockArticle, 
+        { ...mockArticle, _id: 'article-456', publishedAt: '2025-01-21T10:00:00.000Z', type: 'food', prefecture: '大阪府' }
+      ];
       mockClient.fetch.mockResolvedValue(mockArticles);
 
       const articles = await client.getJapaneseArticles();
@@ -257,7 +261,7 @@ describe('SanityArticleClient', () => {
       const mixedArticles = [
         mockArticle,
         { _id: 'invalid', invalid: 'structure' }, // Invalid
-        { ...mockArticle, _id: 'article-789' },
+        { ...mockArticle, _id: 'article-789', publishedAt: '2025-01-22T10:00:00.000Z', type: 'transport', prefecture: '神奈川県' },
       ];
       mockClient.fetch.mockResolvedValue(mixedArticles);
 
@@ -296,14 +300,14 @@ describe('SanityArticleClient', () => {
       {
         language: 'en' as const,
         title: 'English Title',
-        excerpt: 'English excerpt',
+        excerpt: undefined,
         content: [],
         tags: ['english'],
       },
       {
         language: 'fr' as const,
         title: 'French Title',
-        excerpt: 'French excerpt',
+        excerpt: undefined,
         content: [],
         tags: ['french'],
       },
