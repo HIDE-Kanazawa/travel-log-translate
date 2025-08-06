@@ -97,8 +97,6 @@ Triggered by: ${{ steps.extract-info.outputs.triggered-by }}
 Document ID: ${{ steps.extract-info.outputs.document-id }}
 Has images: ${{ steps.extract-info.outputs.has-images }}
 
-🤖 Generated with [Claude Code](https://claude.ai/code)
-
 Co-Authored-By: Claude <noreply@anthropic.com>"
             
             git push
