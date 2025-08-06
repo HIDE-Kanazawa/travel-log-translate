@@ -126,6 +126,11 @@ export class SanityArticleClient {
       publishedAt: baseDocument.publishedAt,
       author: baseDocument.author,
       featured: baseDocument.featured,
+      // Copy image fields (Cover Image, Gallery, etc.)
+      ...(baseDocument.coverImage && { coverImage: baseDocument.coverImage }),
+      ...(baseDocument.mainImage && { mainImage: baseDocument.mainImage }),
+      ...(baseDocument.image && { image: baseDocument.image }),
+      ...(baseDocument.gallery && { gallery: baseDocument.gallery }),
     };
 
     if (dryRun) {

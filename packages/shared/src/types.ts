@@ -147,6 +147,11 @@ export const SanityArticleSchema = z.object({
   author: SanityReferenceSchema.optional(),
   tags: z.array(z.string()).optional(),
   featured: z.boolean().optional(),
+  // Image fields
+  coverImage: SanityImageSchema.optional(),
+  mainImage: SanityImageSchema.optional(),
+  image: SanityImageSchema.optional(),
+  gallery: z.array(SanityImageSchema).optional(),
 });
 
 export type SanityArticle = z.infer<typeof SanityArticleSchema>;
