@@ -38,7 +38,8 @@
       "Bash(gh workflow list:*)",
       "Bash(gh run list:*)",
       "Bash(gh run view:*)",
-      "Bash(node:*)"
+      "Bash(node:*)",
+      "WebFetch(domain:vercel.com)"
     ],
     "deny": []
   }
