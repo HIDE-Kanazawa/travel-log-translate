@@ -193,7 +193,7 @@ export class SanityArticleClient {
       };
     }
 
-    // Prepare the base document
+    // Prepare the base document with all fields properly typed
     const baseDoc: Partial<SanityArticle> = {
       _id: article._id,
       _type: 'article',
@@ -208,24 +208,15 @@ export class SanityArticleClient {
       tags: article.tags,
       publishedAt: article.publishedAt || new Date().toISOString(),
       featured: article.featured || false,
+      // Travel blog specific fields
+      type: article.type as 'spot' | 'food' | 'transport' | 'hotel' | 'note' | undefined,
+      placeName: article.placeName,
+      prefecture: article.prefecture,
     };
 
-    // Add optional fields if provided
+    // Add author if provided
     if (article.author) {
       baseDoc.author = article.author;
-    }
-    
-    // Add custom fields that might be in Sanity schema
-    if (article.type) {
-      (baseDoc as any).type = article.type;
-    }
-    
-    if (article.placeName) {
-      (baseDoc as any).placeName = article.placeName;
-    }
-    
-    if (article.prefecture) {
-      (baseDoc as any).prefecture = article.prefecture;
     }
 
     if (dryRun) {

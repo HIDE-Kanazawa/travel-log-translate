@@ -89,19 +89,18 @@ export class SanityPublisher {
    * This is a simplified implementation - could be expanded with a proper markdown parser
    */
   private convertToPortableText(content: string): any[] {
-    // Split content into paragraphs
-    const paragraphs = content.split('\n\n').filter(p => p.trim());
+    const lines = content.split('\n').filter(line => line.trim());
     const blocks: any[] = [];
 
-    for (let i = 0; i < paragraphs.length; i++) {
-      const paragraph = paragraphs[i].trim();
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim();
       
-      if (!paragraph) continue;
+      if (!line) continue;
 
       // Handle headings
-      if (paragraph.startsWith('#')) {
-        const level = paragraph.match(/^#+/)?.[0].length || 1;
-        const text = paragraph.replace(/^#+\s*/, '');
+      if (line.startsWith('#')) {
+        const level = line.match(/^#+/)?.[0].length || 1;
+        const text = line.replace(/^#+\s*/, '');
         
         blocks.push({
           _type: 'block',
@@ -117,9 +116,29 @@ export class SanityPublisher {
           ],
         });
       }
+      // Handle list items
+      else if (line.startsWith('- ')) {
+        const text = line.replace(/^-\s*/, '');
+        
+        blocks.push({
+          _type: 'block',
+          _key: `list-${i}`,
+          style: 'normal',
+          listItem: 'bullet',
+          level: 1,
+          children: [
+            {
+              _type: 'span',
+              _key: `span-${i}`,
+              text,
+              marks: [],
+            },
+          ],
+        });
+      }
       // Handle images
-      else if (paragraph.includes('![') && paragraph.includes('](')) {
-        const imageMatch = paragraph.match(/!\[(.*?)\]\((.*?)\)/);
+      else if (line.includes('![') && line.includes('](')) {
+        const imageMatch = line.match(/!\[(.*?)\]\((.*?)\)/);
         if (imageMatch) {
           const [, alt] = imageMatch;
           
@@ -146,7 +165,7 @@ export class SanityPublisher {
             {
               _type: 'span',
               _key: `span-${i}`,
-              text: paragraph,
+              text: line,
               marks: [],
             },
           ],
