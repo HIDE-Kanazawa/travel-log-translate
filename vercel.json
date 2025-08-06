@@ -32,6 +32,7 @@
   "env": {
     "NODE_ENV": "production"
   },
+  "runtime": "nodejs20.x",
   "functions": {
     "packages/webhook/api/index.ts": {
       "maxDuration": 60

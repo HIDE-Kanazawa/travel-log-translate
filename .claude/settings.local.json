@@ -33,7 +33,11 @@
       "mcp__serena__insert_after_symbol",
       "Bash(timeout 30s pnpm content smart-translate:*)",
       "Bash(timeout 30s pnpm --filter webhook test)",
-      "Bash(node_modules/.bin/vitest:*)"
+      "Bash(node_modules/.bin/vitest:*)",
+      "mcp__serena__find_file",
+      "Bash(gh workflow list:*)",
+      "Bash(gh run list:*)",
+      "Bash(gh run view:*)"
     ],
     "deny": []
   }
