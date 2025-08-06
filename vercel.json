@@ -5,7 +5,7 @@
   "builds": [
     {
       "src": "packages/webhook/api/index.ts",
-      "use": "@vercel/node"
+      "use": "@vercel/node@20.x"
     }
   ],
   "routes": [
@@ -31,11 +31,5 @@
   ],
   "env": {
     "NODE_ENV": "production"
-  },
-  "functions": {
-    "packages/webhook/api/index.ts": {
-      "runtime": "nodejs20.x",
-      "maxDuration": 60
-    }
   }
 }
