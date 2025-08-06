@@ -137,26 +137,24 @@ export const SanityArticleSchema = z.object({
   _rev: z.string().optional(),
   _createdAt: z.string().optional(),
   _updatedAt: z.string().optional(),
+  // Required fields
   title: z.string(),
   slug: SanitySlugSchema,
-  excerpt: z.string().optional(),
   content: z.array(PortableTextBlockSchema),
   lang: z.string(),
-  translationOf: SanityReferenceSchema.optional(),
-  publishedAt: z.string().optional(),
-  author: SanityReferenceSchema.optional(),
+  publishedAt: z.string(),
+  type: z.enum(['spot', 'food', 'transport', 'hotel', 'note']),
+  prefecture: z.string(),
+  // Optional fields
   tags: z.array(z.string()).optional(),
-  featured: z.boolean().optional(),
-  // Custom travel blog fields
-  type: z.enum(['spot', 'food', 'transport', 'hotel', 'note']).optional(),
   placeName: z.string().optional(),
-  prefecture: z.string().optional(),
+  translationOf: SanityReferenceSchema.optional(),
   // Image fields
   coverImage: SanityImageSchema.optional(),
   mainImage: SanityImageSchema.optional(),
   image: SanityImageSchema.optional(),
   gallery: z.array(SanityImageSchema).optional(),
-});;
+});
 
 export type SanityArticle = z.infer<typeof SanityArticleSchema>;
 

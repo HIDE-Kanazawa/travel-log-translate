@@ -119,7 +119,7 @@ export class TranslationEngine {
       // Check character limits
       const totalCharacters =
         sourceDocument.title.length +
-        (sourceDocument.excerpt?.length || 0) +
+        (''?.length || 0) +
         (sourceDocument.tags?.join(' ').length || 0) +
         contentSummary.totalCharacters;
 
@@ -276,7 +276,7 @@ export class TranslationEngine {
     const extractedTexts = extractTextsFromPortableText(sanitizedContent);
     const textsToTranslate = [
       sourceDocument.title,
-      sourceDocument.excerpt || '',
+
       ...(sourceDocument.tags || []),
       ...extractedTexts.map(t => t.text),
     ].filter(text => text.trim().length > 0);
@@ -286,9 +286,7 @@ export class TranslationEngine {
 
     let translationIndex = 0;
     const translatedTitle = translationResult.translations[translationIndex++];
-    const translatedExcerpt = sourceDocument.excerpt
-      ? translationResult.translations[translationIndex++]
-      : undefined;
+
 
     const translatedTags = sourceDocument.tags
       ? translationResult.translations.slice(
@@ -325,7 +323,7 @@ export class TranslationEngine {
           ? (this.sanityClient as any).generateTranslatedSlug(sourceDocument.slug.current, language)
           : `${sourceDocument.slug.current}-${language}`,
       },
-      excerpt: translatedExcerpt,
+
       content: translatedContent,
       lang: language,
       translationOf: {
@@ -340,7 +338,7 @@ export class TranslationEngine {
       await this.sanityClient.createOrUpdateTranslation(
         sourceDocument,
         translatedTitle,
-        translatedExcerpt,
+        undefined,
         translatedContent,
         translatedTags,
         language,
@@ -381,7 +379,7 @@ export class TranslationEngine {
 
     const totalCharacters =
       sourceDocument.title.length +
-      (sourceDocument.excerpt?.length || 0) +
+      (''?.length || 0) +
       (sourceDocument.tags?.join(' ').length || 0) +
       countCharactersInPortableText(sourceDocument.content);
 

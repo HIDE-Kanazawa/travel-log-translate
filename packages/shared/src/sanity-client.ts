@@ -81,7 +81,7 @@ export class SanityArticleClient {
   async createOrUpdateTranslation(
     baseDocument: SanityArticle,
     translatedTitle: string,
-    translatedExcerpt: string | undefined,
+    _translatedExcerpt: string | undefined,
     translatedContent: any[],
     translatedTags: string[] | undefined,
     language: TargetLanguage,
@@ -114,7 +114,6 @@ export class SanityArticleClient {
         _type: 'slug',
         current: translatedSlug,
       },
-      excerpt: translatedExcerpt,
       content: translatedContent,
       lang: language,
       translationOf: {
@@ -122,10 +121,12 @@ export class SanityArticleClient {
         _ref: baseDocument._id,
       },
       tags: translatedTags,
-      // Copy non-translatable fields
+      // Copy required fields
       publishedAt: baseDocument.publishedAt,
-      author: baseDocument.author,
-      featured: baseDocument.featured,
+      type: baseDocument.type,
+      prefecture: baseDocument.prefecture,
+      // Copy optional fields if they exist
+      placeName: baseDocument.placeName,
       // Copy image fields (Cover Image, Gallery, etc.)
       ...(baseDocument.coverImage && { coverImage: baseDocument.coverImage }),
       ...(baseDocument.mainImage && { mainImage: baseDocument.mainImage }),
@@ -166,15 +167,12 @@ export class SanityArticleClient {
       _id: string;
       title: string;
       slug: string;
-      excerpt: string;
       content: any[];
-      tags: string[];
-      publishedAt?: string;
-      author?: { _type: 'reference'; _ref: string };
-      featured?: boolean;
-      type?: string;
+      publishedAt: string;
+      type: string;
+      prefecture: string;
+      tags?: string[];
       placeName?: string;
-      prefecture?: string;
     },
     dryRun = false
   ): Promise<{
@@ -202,22 +200,15 @@ export class SanityArticleClient {
         _type: 'slug',
         current: article.slug,
       },
-      excerpt: article.excerpt,
       content: article.content,
       lang: 'ja',
-      tags: article.tags,
-      publishedAt: article.publishedAt || new Date().toISOString(),
-      featured: article.featured || false,
-      // Travel blog specific fields
-      type: article.type as 'spot' | 'food' | 'transport' | 'hotel' | 'note' | undefined,
-      placeName: article.placeName,
+      publishedAt: article.publishedAt,
+      type: article.type as 'spot' | 'food' | 'transport' | 'hotel' | 'note',
       prefecture: article.prefecture,
+      // Optional fields
+      tags: article.tags,
+      placeName: article.placeName,
     };
-
-    // Add author if provided
-    if (article.author) {
-      baseDoc.author = article.author;
-    }
 
     if (dryRun) {
       console.log(`[DRY RUN] Would create base article: ${article._id}`);

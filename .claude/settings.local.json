@@ -53,7 +53,9 @@
       "Bash(DEEPL_API_KEY=\"d5d2d028-7460-4c88-93bb-04e168b20ae3:fx\" SANITY_PROJECT_ID=\"fcz6on8p\" SANITY_DATASET=\"production\" SANITY_TOKEN=\"skWi3IXck1RX0FCtbYrXfE4Eobiz5dTDYau7vFFsivLzlB3nthBpBH2ztP3PIc0QbbLFBMA9LFfIYicdKMItIh6NaD9trarF1k2M7oVipmodqt71GTWXpbceqrPddm9LS2a3EUUqAZAZ1IRWnNVGC7iiy7hUNeaKX2fWeX8dKy6lWQIecF6T\" pnpm content publish \"/Users/yamazaki/旅ログ記事生成/content/articles/ready/test-no-backup.md\")",
       "Bash(DEEPL_API_KEY=\"d5d2d028-7460-4c88-93bb-04e168b20ae3:fx\" SANITY_PROJECT_ID=\"fcz6on8p\" SANITY_DATASET=\"production\" SANITY_TOKEN=\"skWi3IXck1RX0FCtbYrXfE4Eobiz5dTDYau7vFFsivLzlB3nthBpBH2ztP3PIc0QbbLFBMA9LFfIYicdKMItIh6NaD9trarF1k2M7oVipmodqt71GTWXpbceqrPddm9LS2a3EUUqAZAZ1IRWnNVGC7iiy7hUNeaKX2fWeX8dKy6lWQIecF6T\" pnpm sanity-translate stats article-1754467676741-ja)",
       "Bash(DEEPL_API_KEY=\"d5d2d028-7460-4c88-93bb-04e168b20ae3:fx\" SANITY_PROJECT_ID=\"fcz6on8p\" SANITY_DATASET=\"production\" SANITY_TOKEN=\"skWi3IXck1RX0FCtbYrXfE4Eobiz5dTDYau7vFFsivLzlB3nthBpBH2ztP3PIc0QbbLFBMA9LFfIYicdKMItIh6NaD9trarF1k2M7oVipmodqt71GTWXpbceqrPddm9LS2a3EUUqAZAZ1IRWnNVGC7iiy7hUNeaKX2fWeX8dKy6lWQIecF6T\" pnpm content publish \"/Users/yamazaki/旅ログ記事生成/content/articles/ready/test-fixed-fields.md\")",
-      "Bash(DEEPL_API_KEY=\"d5d2d028-7460-4c88-93bb-04e168b20ae3:fx\" SANITY_PROJECT_ID=\"fcz6on8p\" SANITY_DATASET=\"production\" SANITY_TOKEN=\"skWi3IXck1RX0FCtbYrXfE4Eobiz5dTDYau7vFFsivLzlB3nthBpBH2ztP3PIc0QbbLFBMA9LFfIYicdKMItIh6NaD9trarF1k2M7oVipmodqt71GTWXpbceqrPddm9LS2a3EUUqAZAZ1IRWnNVGC7iiy7hUNeaKX2fWeX8dKy6lWQIecF6T\" pnpm sanity-translate stats article-1754468331092-ja)"
+      "Bash(DEEPL_API_KEY=\"d5d2d028-7460-4c88-93bb-04e168b20ae3:fx\" SANITY_PROJECT_ID=\"fcz6on8p\" SANITY_DATASET=\"production\" SANITY_TOKEN=\"skWi3IXck1RX0FCtbYrXfE4Eobiz5dTDYau7vFFsivLzlB3nthBpBH2ztP3PIc0QbbLFBMA9LFfIYicdKMItIh6NaD9trarF1k2M7oVipmodqt71GTWXpbceqrPddm9LS2a3EUUqAZAZ1IRWnNVGC7iiy7hUNeaKX2fWeX8dKy6lWQIecF6T\" pnpm sanity-translate stats article-1754468331092-ja)",
+      "WebFetch(domain:api.github.com)",
+      "WebFetch(domain:raw.githubusercontent.com)"
     ],
     "deny": []
   }

@@ -54,14 +54,13 @@ export class SanityPublisher {
           _id: finalArticleId,
           title: article.frontMatter.title,
           slug: article.frontMatter.slug,
-          excerpt: article.frontMatter.excerpt,
           content: portableTextBlocks,
-          tags: article.frontMatter.tags,
           publishedAt: article.frontMatter.publishedAt,
-          featured: false,
           type: article.frontMatter.type,
-          placeName: article.frontMatter.placeName,
           prefecture: article.frontMatter.prefecture,
+          // Optional fields
+          tags: article.frontMatter.tags,
+          placeName: article.frontMatter.placeName,
         },
         options.dryRun || false
       );

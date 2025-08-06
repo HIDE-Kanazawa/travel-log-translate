@@ -27,7 +27,7 @@ export class MarkdownParser {
       // Calculate content length
       const contentLength = parsed.content.length + 
         (frontMatter.title?.length || 0) +
-        (frontMatter.excerpt?.length || 0);
+        (''?.length || 0);
       
       // Check content length limit (15,000 characters)
       if (contentLength > 15000) {
@@ -112,7 +112,7 @@ export class MarkdownParser {
     title: string;
     slug: string;
     contentLength: number;
-    tags: string[];
+    tags: string[] | undefined;
     imageCount: number;
   } {
     const imageReferences = this.extractImageReferences(article.content);
