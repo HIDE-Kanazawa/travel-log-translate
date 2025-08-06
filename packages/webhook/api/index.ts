@@ -186,8 +186,25 @@ async function shouldTriggerTranslation(documentId: string): Promise<{
       };
     }
 
-    // Check if article has images in content
-    const hasImages = article.content?.some((block: any) => block._type === 'image') || false;
+    // Check if article has images (Cover Image, Gallery, or Content)
+    const coverImage = !!(article as any).coverImage;
+    const mainImage = !!(article as any).mainImage;
+    const imageField = !!(article as any).image;
+    const galleryImages = !!(article as any).gallery?.length;
+    const contentImages = !!article.content?.some((block: any) => block._type === 'image');
+    
+    const hasImages = coverImage || mainImage || imageField || galleryImages || contentImages;
+    
+    console.log('Image detection details', {
+      documentId,
+      coverImage,
+      mainImage,
+      imageField,
+      galleryImages,
+      contentImages,
+      hasImages,
+      availableFields: Object.keys(article).filter(key => !key.startsWith('_'))
+    });
     
     if (!hasImages) {
       return {
