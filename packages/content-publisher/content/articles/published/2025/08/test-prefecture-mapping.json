@@ -1,0 +1,25 @@
+{
+  "sanityDocumentId": "article-1754520101695-ja",
+  "title": "Prefecture Mapping テスト記事",
+  "slug": "test-prefecture-mapping",
+  "lang": "ja",
+  "publishedAt": "2025-08-06T22:41:44.500Z",
+  "originalPath": "/Users/yamazaki/旅ログ記事生成/content/articles/ready/test-prefecture-mapping.md",
+  "publishedPath": "/Users/yamazaki/旅ログ記事生成/packages/content-publisher/content/articles/published/2025/08/test-prefecture-mapping.md",
+  "sanityUrl": "https://studio.sanity.io/desk/article;article-1754520101695-ja",
+  "translationStatus": {
+    "pending": true,
+    "completed": false,
+    "languages": []
+  },
+  "images": {
+    "hasImages": false,
+    "count": 0,
+    "assets": []
+  },
+  "stats": {
+    "contentLength": 272,
+    "publishedAt": "2025-08-06T22:41:44.500Z",
+    "lastModified": "2025-08-06T22:41:44.500Z"
+  }
+}
