@@ -67,7 +67,9 @@
       "Bash(DEEPL_API_KEY=\"d5d2d028-7460-4c88-93bb-04e168b20ae3:fx\" SANITY_PROJECT_ID=\"fcz6on8p\" SANITY_DATASET=\"production\" SANITY_TOKEN=\"skWi3IXck1RX0FCtbYrXfE4Eobiz5dTDYau7vFFsivLzlB3nthBpBH2ztP3PIc0QbbLFBMA9LFfIYicdKMItIh6NaD9trarF1k2M7oVipmodqt71GTWXpbceqrPddm9LS2a3EUUqAZAZ1IRWnNVGC7iiy7hUNeaKX2fWeX8dKy6lWQIecF6T\" node packages/worker/dist/index.js translate article-1754520101695-ja --dry-run)",
       "Bash(DEEPL_API_KEY=\"d5d2d028-7460-4c88-93bb-04e168b20ae3:fx\" SANITY_PROJECT_ID=\"fcz6on8p\" SANITY_DATASET=\"production\" SANITY_TOKEN=\"skWi3IXck1RX0FCtbYrXfE4Eobiz5dTDYau7vFFsivLzlB3nthBpBH2ztP3PIc0QbbLFBMA9LFfIYicdKMItIh6NaD9trarF1k2M7oVipmodqt71GTWXpbceqrPddm9LS2a3EUUqAZAZ1IRWnNVGC7iiy7hUNeaKX2fWeX8dKy6lWQIecF6T\" pnpm sanity-translate translate article-1754490080280-ja --force --languages=en)",
       "mcp__serena__think_about_task_adherence",
-      "WebFetch(domain:www.sanity.io)"
+      "WebFetch(domain:www.sanity.io)",
+      "mcp__serena__read_memory",
+      "WebFetch(domain:docs.vercel.com)"
     ],
     "deny": []
   }

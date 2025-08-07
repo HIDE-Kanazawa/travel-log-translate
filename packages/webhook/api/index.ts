@@ -186,22 +186,13 @@ async function shouldTriggerTranslation(documentId: string): Promise<{
       };
     }
 
-    // Check if article has images (Cover Image, Gallery, or Content)
-    const coverImage = !!(article as any).coverImage;
-    const mainImage = !!(article as any).mainImage;
-    const imageField = !!(article as any).image;
-    const galleryImages = !!(article as any).gallery?.length;
-    const contentImages = !!article.content?.some((block: any) => block._type === 'image');
-    
-    const hasImages = coverImage || mainImage || imageField || galleryImages || contentImages;
+    // Check if article has images (coverImage or gallery - new schema)
+    const hasImages = !!(article as any).coverImage || (!!(article as any).gallery && (article as any).gallery.length > 0);
     
     console.log('Image detection details', {
       documentId,
-      coverImage,
-      mainImage,
-      imageField,
-      galleryImages,
-      contentImages,
+      coverImage: !!(article as any).coverImage,
+      gallery: !!(article as any).gallery && (article as any).gallery.length > 0,
       hasImages,
       availableFields: Object.keys(article).filter(key => !key.startsWith('_'))
     });
@@ -272,16 +263,33 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     if (method === 'POST' && url === '/webhook/sanity') {
-      // TODO: Fix signature verification in Vercel environment
-      // For now, we'll skip signature verification to allow testing
+      // Verify signature FIRST (security priority)
       const signature = req.headers['sanity-webhook-signature'] as string;
-      console.log('Webhook request received', {
-        hasSignature: !!signature,
-        bodyType: typeof req.body,
-        bodyIsBuffer: Buffer.isBuffer(req.body),
-        userAgent: req.headers['user-agent'],
-        contentType: req.headers['content-type'],
-      });
+      if (signature) {
+        const bodyBuffer = Buffer.from(typeof req.body === 'string' ? req.body : JSON.stringify(req.body));
+        if (!verifyWebhookSignature(bodyBuffer, signature)) {
+          console.warn('Invalid webhook signature', {
+            hasSignature: !!signature,
+            userAgent: req.headers['user-agent'],
+          });
+          return res.status(401).json({ error: 'Invalid signature' });
+        }
+      }
+
+      // Extract Sanity operation type from headers
+      const operation = req.headers['sanity-operation'] as string;
+      
+      // Only process 'update' operations for smart translation
+      if (operation !== 'update') {
+        console.log('Webhook ignored - not an update operation', {
+          operation,
+          documentId: req.headers['sanity-document-id'],
+        });
+        return res.json({
+          message: 'Webhook ignored - only update operations trigger translation',
+          operation,
+        });
+      }
 
       // Parse payload
       const rawPayload = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
