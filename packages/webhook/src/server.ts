@@ -179,8 +179,8 @@ class WebhookServer {
         };
       }
 
-      // Check if article has images in content
-      const hasImages = article.content?.some((block: any) => block._type === 'image') || false;
+      // Check if article has images (coverImage or gallery)
+      const hasImages = !!(article.coverImage || (article.gallery && article.gallery.length > 0));
       
       if (!hasImages) {
         return {
@@ -247,6 +247,21 @@ class WebhookServer {
     // Sanity webhook endpoint
     this.app.post('/webhook/sanity', async (req, res) => {
       try {
+        // Extract Sanity operation type from headers
+        const operation = req.headers['sanity-operation'] as string;
+        
+        // Only process 'update' operations for smart translation
+        if (operation !== 'update') {
+          console.log('Webhook ignored - not an update operation', {
+            operation,
+            documentId: req.headers['sanity-document-id'],
+          });
+          return res.json({
+            message: 'Webhook ignored - only update operations trigger translation',
+            operation,
+          });
+        }
+
         // Verify signature
         const signature = req.headers['sanity-webhook-signature'] as string;
         if (!signature || !this.verifyWebhookSignature(req.body, signature)) {
