@@ -247,6 +247,17 @@ class WebhookServer {
     // Sanity webhook endpoint
     this.app.post('/webhook/sanity', async (req, res) => {
       try {
+        // Verify signature FIRST (security priority)
+        const signature = req.headers['sanity-webhook-signature'] as string;
+        if (!signature || !this.verifyWebhookSignature(req.body, signature)) {
+          console.warn('Invalid webhook signature', {
+            hasSignature: !!signature,
+            ip: req.ip,
+            userAgent: req.headers['user-agent'],
+          });
+          return res.status(401).json({ error: 'Invalid signature' });
+        }
+
         // Extract Sanity operation type from headers
         const operation = req.headers['sanity-operation'] as string;
         
@@ -260,17 +271,6 @@ class WebhookServer {
             message: 'Webhook ignored - only update operations trigger translation',
             operation,
           });
-        }
-
-        // Verify signature
-        const signature = req.headers['sanity-webhook-signature'] as string;
-        if (!signature || !this.verifyWebhookSignature(req.body, signature)) {
-          console.warn('Invalid webhook signature', {
-            hasSignature: !!signature,
-            ip: req.ip,
-            userAgent: req.headers['user-agent'],
-          });
-          return res.status(401).json({ error: 'Invalid signature' });
         }
 
         // Parse payload

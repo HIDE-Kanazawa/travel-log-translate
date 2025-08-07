@@ -126,6 +126,7 @@ describe('WebhookServer', () => {
       const response = await request(app)
         .post('/webhook/sanity')
         .set('sanity-webhook-signature', createValidSignature(validPayload))
+        .set('sanity-operation', 'update')
         .send(validPayload);
 
       expect(response.status).toBe(200);
