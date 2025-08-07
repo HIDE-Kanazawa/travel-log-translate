@@ -95,16 +95,23 @@ describe('WebhookServer', () => {
       return `sha256=${signature}`;
     }
 
-    it('should process valid Japanese article webhook', async () => {
+    it('should process valid Japanese article webhook for update operations', async () => {
       // Mock Sanity responses for smart translation logic
       mockSanityClient.getArticle.mockResolvedValue({
         _id: 'article-123',
         _type: 'article',
         title: 'Test Article',
         lang: 'ja',
+        slug: { current: 'test-article' },
+        publishedAt: '2024-01-01T00:00:00Z',
+        type: 'spot',
+        prefecture: 'Tokyo',
         content: [
           { _type: 'block', children: [{ text: 'Some text content' }] },
-          { _type: 'image', asset: { _ref: 'image-123' }, alt: 'Test image' },
+        ],
+        coverImage: { _type: 'image', asset: { _ref: 'image-123' }, alt: 'Cover image' },
+        gallery: [
+          { _type: 'image', asset: { _ref: 'image-456' }, alt: 'Gallery image' },
         ],
       });
 
@@ -144,6 +151,34 @@ describe('WebhookServer', () => {
       });
     });
 
+    it('should ignore non-update operations (create/delete)', async () => {
+      const response1 = await request(app)
+        .post('/webhook/sanity')
+        .set('sanity-webhook-signature', createValidSignature(validPayload))
+        .set('sanity-operation', 'create')
+        .send(validPayload);
+
+      expect(response1.status).toBe(200);
+      expect(response1.body).toEqual({
+        message: 'Webhook ignored - only update operations trigger translation',
+        operation: 'create',
+      });
+
+      const response2 = await request(app)
+        .post('/webhook/sanity')
+        .set('sanity-webhook-signature', createValidSignature(validPayload))
+        .set('sanity-operation', 'delete')
+        .send(validPayload);
+
+      expect(response2.status).toBe(200);
+      expect(response2.body).toEqual({
+        message: 'Webhook ignored - only update operations trigger translation',
+        operation: 'delete',
+      });
+
+      expect(mockOctokit.repos.createDispatchEvent).not.toHaveBeenCalled();
+    });
+
     it('should reject webhook without signature', async () => {
       const response = await request(app)
         .post('/webhook/sanity')
@@ -158,6 +193,7 @@ describe('WebhookServer', () => {
       const response = await request(app)
         .post('/webhook/sanity')
         .set('sanity-webhook-signature', 'sha256=invalid-signature')
+        .set('sanity-operation', 'update')
         .send(validPayload);
 
       expect(response.status).toBe(401);
@@ -168,11 +204,18 @@ describe('WebhookServer', () => {
       const englishPayload = { ...validPayload, lang: 'en' };
 
       // Mock Sanity response for smart trigger
-      mockSanityClient.getArticle.mockResolvedValue(englishPayload);
+      mockSanityClient.getArticle.mockResolvedValue({
+        ...englishPayload,
+        publishedAt: '2024-01-01T00:00:00Z',
+        type: 'spot',
+        prefecture: 'Tokyo',
+        content: [{ _type: 'block', children: [{ text: 'English content' }] }],
+      });
 
       const response = await request(app)
         .post('/webhook/sanity')
         .set('sanity-webhook-signature', createValidSignature(englishPayload))
+        .set('sanity-operation', 'update')
         .send(englishPayload);
 
       expect(response.status).toBe(200);
@@ -191,6 +234,7 @@ describe('WebhookServer', () => {
       const response = await request(app)
         .post('/webhook/sanity')
         .set('sanity-webhook-signature', createValidSignature(invalidPayload))
+        .set('sanity-operation', 'update')
         .send(invalidPayload);
 
       expect(response.status).toBe(400);
@@ -208,10 +252,14 @@ describe('WebhookServer', () => {
         _type: 'article',
         title: 'Test Article',
         lang: 'ja',
+        slug: { current: 'test-article' },
+        publishedAt: '2024-01-01T00:00:00Z',
+        type: 'spot',
+        prefecture: 'Tokyo',
         content: [
           { _type: 'block', children: [{ text: 'Some text content' }] },
-          { _type: 'image', asset: { _ref: 'image-123' }, alt: 'Test image' },
         ],
+        coverImage: { _type: 'image', asset: { _ref: 'image-123' }, alt: 'Test image' },
       });
       
       mockSanityClient.getTranslationStatus.mockResolvedValue([
@@ -227,6 +275,7 @@ describe('WebhookServer', () => {
       const response = await request(app)
         .post('/webhook/sanity')
         .set('sanity-webhook-signature', createValidSignature(validPayload))
+        .set('sanity-operation', 'update')
         .send(validPayload);
 
       expect(response.status).toBe(500);
@@ -248,7 +297,11 @@ describe('WebhookServer', () => {
       // Mock Sanity responses for smart trigger
       mockSanityClient.getArticle.mockResolvedValue({
         ...minimalPayload,
-        content: [{ _type: 'image' }], // Assume it has images
+        publishedAt: '2024-01-01T00:00:00Z',
+        type: 'spot',
+        prefecture: 'Tokyo',
+        content: [{ _type: 'block', children: [{ text: 'Minimal content' }] }],
+        coverImage: { _type: 'image', asset: { _ref: 'image-minimal' }, alt: 'Minimal image' },
       });
       mockSanityClient.getTranslationStatus.mockResolvedValue([
         { language: 'en', exists: false },
@@ -258,6 +311,7 @@ describe('WebhookServer', () => {
       const response = await request(app)
         .post('/webhook/sanity')
         .set('sanity-webhook-signature', createValidSignature(minimalPayload))
+        .set('sanity-operation', 'update')
         .send(minimalPayload);
 
       expect(response.status).toBe(200);
@@ -371,10 +425,14 @@ describe('WebhookServer', () => {
         _type: 'article',
         title: 'Japanese Article with Images',
         lang: 'ja',
+        slug: { current: 'japanese-article-images' },
+        publishedAt: '2024-01-01T00:00:00Z',
+        type: 'spot',
+        prefecture: 'Tokyo',
         content: [
           { _type: 'block', children: [{ text: 'Some text content' }] },
-          { _type: 'image', asset: { _ref: 'image-123' }, alt: 'Test image' },
         ],
+        coverImage: { _type: 'image', asset: { _ref: 'image-123' }, alt: 'Test image' },
       });
 
       mockSanityClient.getTranslationStatus.mockResolvedValue([
@@ -388,6 +446,7 @@ describe('WebhookServer', () => {
       const response = await request(app)
         .post('/webhook/sanity')
         .set('sanity-webhook-signature', createValidSignature(validPayload))
+        .set('sanity-operation', 'update')
         .send(validPayload);
 
       expect(response.status).toBe(200);
@@ -422,9 +481,7 @@ describe('WebhookServer', () => {
     it('should NOT trigger translation for Japanese article without images', async () => {
       const payloadNoImages = {
         ...validPayload,
-        content: [
-          { _type: 'block', children: [{ text: 'Text only content' }] },
-        ],
+        title: 'Japanese Article No Images',
       };
 
       mockSanityClient.getArticle.mockResolvedValue({
@@ -432,14 +489,20 @@ describe('WebhookServer', () => {
         _type: 'article',
         title: 'Japanese Article No Images',
         lang: 'ja',
+        slug: { current: 'japanese-article-no-images' },
+        publishedAt: '2024-01-01T00:00:00Z',
+        type: 'spot',
+        prefecture: 'Tokyo',
         content: [
           { _type: 'block', children: [{ text: 'Text only content' }] },
         ],
+        // No coverImage or gallery - should not trigger
       });
 
       const response = await request(app)
         .post('/webhook/sanity')
         .set('sanity-webhook-signature', createValidSignature(payloadNoImages))
+        .set('sanity-operation', 'update')
         .send(payloadNoImages);
 
       expect(response.status).toBe(200);
@@ -466,15 +529,20 @@ describe('WebhookServer', () => {
         _type: 'article',
         title: 'English Article with Images',
         lang: 'en',
+        slug: { current: 'english-article-images' },
+        publishedAt: '2024-01-01T00:00:00Z',
+        type: 'spot',
+        prefecture: 'Tokyo',
         content: [
           { _type: 'block', children: [{ text: 'Some text content' }] },
-          { _type: 'image', asset: { _ref: 'image-123' }, alt: 'Test image' },
         ],
+        coverImage: { _type: 'image', asset: { _ref: 'image-123' }, alt: 'Test image' },
       });
 
       const response = await request(app)
         .post('/webhook/sanity')
         .set('sanity-webhook-signature', createValidSignature(englishPayload))
+        .set('sanity-operation', 'update')
         .send(englishPayload);
 
       expect(response.status).toBe(200);
@@ -495,10 +563,14 @@ describe('WebhookServer', () => {
         _type: 'article',
         title: 'Japanese Article with Images',
         lang: 'ja',
+        slug: { current: 'japanese-article-images' },
+        publishedAt: '2024-01-01T00:00:00Z',
+        type: 'spot',
+        prefecture: 'Tokyo',
         content: [
           { _type: 'block', children: [{ text: 'Some text content' }] },
-          { _type: 'image', asset: { _ref: 'image-123' }, alt: 'Test image' },
         ],
+        coverImage: { _type: 'image', asset: { _ref: 'image-123' }, alt: 'Test image' },
       });
 
       // Mock all translations as existing
@@ -512,6 +584,7 @@ describe('WebhookServer', () => {
       const response = await request(app)
         .post('/webhook/sanity')
         .set('sanity-webhook-signature', createValidSignature(validPayload))
+        .set('sanity-operation', 'update')
         .send(validPayload);
 
       expect(response.status).toBe(200);
@@ -532,6 +605,7 @@ describe('WebhookServer', () => {
       const response = await request(app)
         .post('/webhook/sanity')
         .set('sanity-webhook-signature', createValidSignature(validPayload))
+        .set('sanity-operation', 'update')
         .send(validPayload);
 
       expect(response.status).toBe(200);
@@ -552,6 +626,7 @@ describe('WebhookServer', () => {
       const response = await request(app)
         .post('/webhook/sanity')
         .set('sanity-webhook-signature', createValidSignature(validPayload))
+        .set('sanity-operation', 'update')
         .send(validPayload);
 
       expect(response.status).toBe(200);
@@ -580,9 +655,14 @@ describe('WebhookServer', () => {
         _type: 'article',
         title: 'Japanese Article with Images',
         lang: 'ja',
+        slug: { current: 'japanese-article-images' },
+        publishedAt: '2024-01-01T00:00:00Z',
+        type: 'spot',
+        prefecture: 'Tokyo',
         content: [
-          { _type: 'image', asset: { _ref: 'image-123' }, alt: 'Test image' },
+          { _type: 'block', children: [{ text: 'Some text content' }] },
         ],
+        coverImage: { _type: 'image', asset: { _ref: 'image-123' }, alt: 'Test image' },
       });
 
       mockSanityClient.getTranslationStatus.mockResolvedValue(translationStatus);
@@ -591,6 +671,7 @@ describe('WebhookServer', () => {
       const response = await request(app)
         .post('/webhook/sanity')
         .set('sanity-webhook-signature', createValidSignature(validPayload))
+        .set('sanity-operation', 'update')
         .send(validPayload);
 
       expect(response.status).toBe(200);
@@ -633,6 +714,7 @@ describe('WebhookServer', () => {
       const response = await request(app)
         .post('/webhook/sanity')
         .set('sanity-webhook-signature', `sha256=${expectedSignature}`)
+        .set('sanity-operation', 'update')
         .send(payload);
 
       // Should not be rejected due to signature (will be rejected due to invalid payload structure)
@@ -653,6 +735,7 @@ describe('WebhookServer', () => {
       const response = await request(app)
         .post('/webhook/sanity')
         .set('sanity-webhook-signature', `sha256=${originalSignature}`)
+        .set('sanity-operation', 'update')
         .send(tamperedPayload);
 
       expect(response.status).toBe(401);
@@ -665,6 +748,7 @@ describe('WebhookServer', () => {
       const response = await request(app)
         .post('/webhook/sanity')
         .set('sanity-webhook-signature', 'malformed-signature')
+        .set('sanity-operation', 'update')
         .send(testPayload);
 
       expect(response.status).toBe(401);
