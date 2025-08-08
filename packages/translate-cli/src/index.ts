@@ -10,7 +10,7 @@ import { Logger } from './utils/logger';
 
 const SUPPORTED_LANGUAGES = [
   'en', 'zh-cn', 'zh-tw', 'ko', 'fr', 'de', 'es', 'it', 'pt', 'ru',
-  'ar', 'hi', 'id', 'ms', 'th', 'vi', 'tl', 'tr', 'br'
+  'ar', 'hi', 'id', 'ms', 'th', 'vi', 'tl', 'tr', 'pt-br'
 ];
 
 const program = new Command();

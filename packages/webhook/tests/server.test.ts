@@ -461,7 +461,7 @@ describe('WebhookServer', () => {
       expect(mockSanityClient.getArticle).toHaveBeenCalledWith('article-smart-123');
       expect(mockSanityClient.getTranslationStatus).toHaveBeenCalledWith(
         'article-smart-123',
-        expect.arrayContaining(['en', 'fr', 'de', 'es', 'it', 'pt', 'ru', 'ar', 'hi', 'id', 'ms', 'th', 'vi', 'tl', 'tr', 'br', 'zh-cn', 'zh-tw', 'ko'])
+        expect.arrayContaining(['en', 'fr', 'de', 'es', 'it', 'pt', 'ru', 'ar', 'hi', 'id', 'ms', 'th', 'vi', 'tl', 'tr', 'pt-br', 'zh-cn', 'zh-tw', 'ko'])
       );
 
       expect(mockOctokit.repos.createDispatchEvent).toHaveBeenCalledWith({
@@ -577,7 +577,7 @@ describe('WebhookServer', () => {
       // Mock all translations as existing
       const allTranslationsExist = [
         'en', 'zh-cn', 'zh-tw', 'ko', 'fr', 'de', 'es', 'it', 'pt', 'ru', 
-        'ar', 'hi', 'id', 'ms', 'th', 'vi', 'tl', 'tr', 'br'
+        'ar', 'hi', 'id', 'ms', 'th', 'vi', 'tl', 'tr', 'pt-br'
       ].map(lang => ({ language: lang, exists: true }));
 
       mockSanityClient.getTranslationStatus.mockResolvedValue(allTranslationsExist);

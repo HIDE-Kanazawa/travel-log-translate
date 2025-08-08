@@ -22,7 +22,7 @@ export const TARGET_LANGUAGES = [
   'vi',
   'tl',
   'tr',
-  'br',
+  'pt-br',
 ] as const;
 
 export type TargetLanguage = (typeof TARGET_LANGUAGES)[number];
@@ -49,7 +49,7 @@ export const DEEPL_LANGUAGE_MAP: Record<TargetLanguage, string> = {
   vi: 'VI',
   tl: 'TL',
   tr: 'TR',
-  br: 'PT-BR',
+  'pt-br': 'PT-BR',
 };
 
 /**

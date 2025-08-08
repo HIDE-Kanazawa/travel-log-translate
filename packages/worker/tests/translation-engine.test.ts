@@ -290,7 +290,7 @@ describe('TranslationEngine', () => {
       // Return status for all 19 target languages  
       const allLanguageStatus = [
         'en', 'zh-cn', 'zh-tw', 'ko', 'fr', 'de', 'es', 'it', 'pt', 'ru',
-        'ar', 'hi', 'id', 'ms', 'th', 'vi', 'tl', 'tr', 'br'
+        'ar', 'hi', 'id', 'ms', 'th', 'vi', 'tl', 'tr', 'pt-br'
       ].map(lang => ({
         language: lang,
         exists: lang === 'en', // Only English exists

@@ -22,7 +22,7 @@ interface SanityArticle {
 /**
  * Target languages for translation
  */
-type TargetLanguage = 'en' | 'zh-cn' | 'zh-tw' | 'ko' | 'fr' | 'de' | 'es' | 'it' | 'pt' | 'ru' | 'ar' | 'hi' | 'id' | 'ms' | 'th' | 'vi' | 'tl' | 'tr' | 'br';
+type TargetLanguage = 'en' | 'zh-cn' | 'zh-tw' | 'ko' | 'fr' | 'de' | 'es' | 'it' | 'pt' | 'ru' | 'ar' | 'hi' | 'id' | 'ms' | 'th' | 'vi' | 'tl' | 'tr' | 'pt-br';
 
 /**
  * Environment configuration schema
@@ -206,7 +206,7 @@ async function shouldTriggerTranslation(documentId: string): Promise<{
     }
 
     // Check translation status for all target languages
-    const targetLanguages: TargetLanguage[] = ['en', 'zh-cn', 'zh-tw', 'ko', 'fr', 'de', 'es', 'it', 'pt', 'ru', 'ar', 'hi', 'id', 'ms', 'th', 'vi', 'tl', 'tr', 'br'];
+    const targetLanguages: TargetLanguage[] = ['en', 'zh-cn', 'zh-tw', 'ko', 'fr', 'de', 'es', 'it', 'pt', 'ru', 'ar', 'hi', 'id', 'ms', 'th', 'vi', 'tl', 'tr', 'pt-br'];
     const translationStatus = await getTranslationStatus(documentId, targetLanguages);
     
     // Check if all translations already exist

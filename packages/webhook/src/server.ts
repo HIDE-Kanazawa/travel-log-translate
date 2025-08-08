@@ -92,6 +92,19 @@ class WebhookServer {
   }
 
   /**
+   * Safely retrieve a header value allowing multiple possible names.
+   * Express lowercases header keys, so we compare in lowercase.
+   */
+  private getHeader(req: express.Request, names: string[]): string | undefined {
+    for (const name of names) {
+      const value = req.headers[name.toLowerCase()];
+      if (typeof value === 'string' && value.length > 0) return value;
+      if (Array.isArray(value) && value.length > 0) return value[0];
+    }
+    return undefined;
+  }
+
+  /**
    * Setup Express middleware
    */
   private setupMiddleware(): void {
@@ -191,7 +204,7 @@ class WebhookServer {
       }
 
       // Check translation status for all target languages
-      const targetLanguages = ['en', 'zh-cn', 'zh-tw', 'ko', 'fr', 'de', 'es', 'it', 'pt', 'ru', 'ar', 'hi', 'id', 'ms', 'th', 'vi', 'tl', 'tr', 'br'];
+      const targetLanguages = ['en', 'zh-cn', 'zh-tw', 'ko', 'fr', 'de', 'es', 'it', 'pt', 'ru', 'ar', 'hi', 'id', 'ms', 'th', 'vi', 'tl', 'tr', 'pt-br'];
       const translationStatus = await this.sanityClient.getTranslationStatus(documentId, targetLanguages as any);
       
       // Check if all translations already exist
@@ -248,7 +261,11 @@ class WebhookServer {
     this.app.post('/webhook/sanity', async (req, res) => {
       try {
         // Verify signature FIRST (security priority)
-        const signature = req.headers['sanity-webhook-signature'] as string;
+        const signature = this.getHeader(req, [
+          'sanity-webhook-signature',
+          'x-sanity-webhook-signature',
+          'x-sanity-signature',
+        ]) as string;
         if (!signature || !this.verifyWebhookSignature(req.body, signature)) {
           console.warn('Invalid webhook signature', {
             hasSignature: !!signature,
@@ -259,13 +276,20 @@ class WebhookServer {
         }
 
         // Extract Sanity operation type from headers
-        const operation = req.headers['sanity-operation'] as string;
+        const operation = this.getHeader(req, [
+          'sanity-operation',
+          'x-sanity-operation',
+          'x-sanity-event',
+        ]) as string;
         
         // Only process 'update' operations for smart translation
         if (operation !== 'update') {
           console.log('Webhook ignored - not an update operation', {
             operation,
-            documentId: req.headers['sanity-document-id'],
+            documentId: this.getHeader(req, [
+              'sanity-document-id',
+              'x-sanity-document-id',
+            ]),
           });
           return res.json({
             message: 'Webhook ignored - only update operations trigger translation',

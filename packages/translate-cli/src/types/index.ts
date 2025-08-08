@@ -88,5 +88,5 @@ export const DEEPL_LANGUAGE_MAP: Record<string, string> = {
   vi: 'VI',
   tl: 'TL',
   tr: 'TR',
-  br: 'PT-BR',
+  'pt-br': 'PT-BR',
 };
