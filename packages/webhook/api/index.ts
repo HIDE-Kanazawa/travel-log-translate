@@ -79,6 +79,39 @@ let octokit: Octokit;
 let sanityClient: SanityClient;
 
 /**
+ * Helper: get first available header value by names (case-insensitive)
+ */
+function getHeader(req: VercelRequest, names: string[]): string | undefined {
+  for (const name of names) {
+    const value = req.headers[name.toLowerCase()];
+    if (typeof value === 'string' && value.length > 0) return value;
+    if (Array.isArray(value) && value.length > 0) return value[0];
+  }
+  return undefined;
+}
+
+/**
+ * Helper: read the raw body as Buffer
+ * - If body is already a string/Buffer, use it directly
+ * - Otherwise, try req.rawBody, or read from the stream
+ */
+async function getRawBody(req: VercelRequest): Promise<Buffer> {
+  const b: any = (req as any).body;
+  if (Buffer.isBuffer(b)) return b;
+  if (typeof b === 'string') return Buffer.from(b);
+  const rawBody: any = (req as any).rawBody;
+  if (Buffer.isBuffer(rawBody)) return rawBody;
+  if (typeof rawBody === 'string') return Buffer.from(rawBody);
+  return await new Promise<Buffer>((resolve, reject) => {
+    const chunks: Buffer[] = [];
+    (req as any)
+      .on('data', (chunk: any) => chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)))
+      .on('end', () => resolve(Buffer.concat(chunks)))
+      .on('error', reject);
+  });
+}
+
+/**
  * Initialize configuration and clients
  */
 function initializeServices() {
@@ -264,26 +297,39 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (method === 'POST' && url === '/webhook/sanity') {
       // Verify signature FIRST (security priority)
-      const signature = req.headers['sanity-webhook-signature'] as string;
-      if (signature) {
-        const bodyBuffer = Buffer.from(typeof req.body === 'string' ? req.body : JSON.stringify(req.body));
-        if (!verifyWebhookSignature(bodyBuffer, signature)) {
-          console.warn('Invalid webhook signature', {
-            hasSignature: !!signature,
-            userAgent: req.headers['user-agent'],
-          });
-          return res.status(401).json({ error: 'Invalid signature' });
-        }
+      const signature = getHeader(req, [
+        'sanity-webhook-signature',
+        'x-sanity-webhook-signature',
+        'x-sanity-signature',
+      ]);
+      if (!signature) {
+        console.warn('Missing webhook signature', {
+          userAgent: req.headers['user-agent'],
+        });
+        return res.status(401).json({ error: 'Missing signature' });
+      }
+
+      const bodyBuffer = await getRawBody(req);
+      if (!verifyWebhookSignature(bodyBuffer, signature)) {
+        console.warn('Invalid webhook signature', {
+          hasSignature: true,
+          userAgent: req.headers['user-agent'],
+        });
+        return res.status(401).json({ error: 'Invalid signature' });
       }
 
       // Extract Sanity operation type from headers
-      const operation = req.headers['sanity-operation'] as string;
+      const operation = getHeader(req, [
+        'sanity-operation',
+        'x-sanity-operation',
+        'x-sanity-event',
+      ]) as string;
       
       // Only process 'update' operations for smart translation
       if (operation !== 'update') {
         console.log('Webhook ignored - not an update operation', {
           operation,
-          documentId: req.headers['sanity-document-id'],
+          documentId: getHeader(req, ['sanity-document-id', 'x-sanity-document-id']),
         });
         return res.json({
           message: 'Webhook ignored - only update operations trigger translation',
@@ -292,7 +338,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
 
       // Parse payload
-      const rawPayload = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+      const rawPayload = typeof (req as any).body === 'string' ? JSON.parse((req as any).body) : (req as any).body;
       const payload = SanityWebhookPayloadSchema.parse(rawPayload);
 
       console.log('Webhook received', {
