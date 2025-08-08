@@ -99,6 +99,12 @@ async function getRawBody(req: VercelRequest): Promise<Buffer> {
   const b: any = (req as any).body;
   if (Buffer.isBuffer(b)) return b;
   if (typeof b === 'string') return Buffer.from(b);
+  // If body is already parsed as object, fallback to JSON.stringify
+  if (b && typeof b === 'object') {
+    try {
+      return Buffer.from(JSON.stringify(b));
+    } catch {}
+  }
   const rawBody: any = (req as any).rawBody;
   if (Buffer.isBuffer(rawBody)) return rawBody;
   if (typeof rawBody === 'string') return Buffer.from(rawBody);
