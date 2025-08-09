@@ -104,6 +104,29 @@ jobs:
           echo "📝 Title: ${{ steps.extract-params.outputs.TITLE }}"
           echo "🚀 Triggered by: ${{ steps.extract-params.outputs.TRIGGERED_BY }}"
 
+      - name: Diagnose Sanity target and existing translations
+        env:
+          SANITY_PROJECT_ID: ${{ secrets.SANITY_PROJECT_ID }}
+          SANITY_DATASET: ${{ secrets.SANITY_DATASET }}
+          SANITY_TOKEN: ${{ secrets.SANITY_TOKEN }}
+          SANITY_API_VERSION: ${{ secrets.SANITY_API_VERSION }}
+        run: |
+          set -euo pipefail
+          echo "🛠 Using Sanity project=${SANITY_PROJECT_ID} dataset=${SANITY_DATASET} apiVersion=${SANITY_API_VERSION:-2024-01-01}"
+          BASE_ID='${{ steps.extract-params.outputs.DOCUMENT_ID }}'
+          QUERY="*[_type == 'article' && ( _id == '${{ steps.extract-params.outputs.DOCUMENT_ID }}' || _id match '${{ steps.extract-params.outputs.DOCUMENT_ID }}-*')]{_id,lang,title,translationOf}"
+          ENCODED_QUERY=$(python3 - << 'PY'
+import urllib.parse, os
+print(urllib.parse.quote(os.environ['QUERY']))
+PY
+)
+          URL="https://${SANITY_PROJECT_ID}.api.sanity.io/v${SANITY_API_VERSION:-2024-01-01}/data/query/${SANITY_DATASET}?query=${ENCODED_QUERY}"
+          echo "🔎 GROQ: $QUERY"
+          http_code=$(curl -sS -o sanity-query.json -w "%{http_code}" -H "Authorization: Bearer ${SANITY_TOKEN}" "$URL") || true
+          echo "🌐 HTTP ${http_code}"
+          echo "📦 Query result (first 200 lines):"
+          sed -n '1,200p' sanity-query.json || true
+
       - name: Check DeepL quota before translation
         env:
           DEEPL_API_KEY: ${{ secrets.DEEPL_API_KEY }}
