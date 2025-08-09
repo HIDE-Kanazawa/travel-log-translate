@@ -26,8 +26,8 @@ jobs:
       DEEPL_API_KEY: ${{ secrets.DEEPL_API_KEY }}
       SANITY_PROJECT_ID: ${{ secrets.SANITY_PROJECT_ID }}
       SANITY_DATASET: ${{ secrets.SANITY_DATASET }}
-      # Use write token for operations that may require mutations; exposed as SANITY_TOKEN to the tools
-      SANITY_TOKEN: ${{ secrets.SANITY_WRITE_TOKEN }}
+      # Use existing repository secret; must be a token with write perms
+      SANITY_TOKEN: ${{ secrets.SANITY_TOKEN }}
       # Optional; define this secret if you want to pin API version
       SANITY_API_VERSION: ${{ secrets.SANITY_API_VERSION }}
 
