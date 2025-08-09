@@ -52,11 +52,81 @@ export class SanityArticleClient {
     const translatedId = `${baseDocumentId}-${language}`;
 
     try {
-      const doc = await this.client.getDocument(translatedId);
-      return doc !== null;
+      const doc = (await this.client.getDocument(translatedId)) as any;
+      if (!doc) return false;
+      // Additional guards to avoid false positives due to stray IDs
+      const isArticle = doc._type === 'article';
+      const langMatches = doc.lang === language;
+      const refMatches = !!doc.translationOf && doc.translationOf._ref === baseDocumentId;
+      return Boolean(isArticle && langMatches && refMatches);
     } catch {
       return false;
     }
+  }
+
+  /**
+   * Fetch translated document metadata (for diagnostics)
+   */
+  async getTranslationDocument(
+    baseDocumentId: string,
+    language: TargetLanguage
+  ): Promise<
+    | (Pick<SanityArticle, '_id' | 'title' | 'lang'> & {
+        _createdAt?: string;
+        _updatedAt?: string;
+        translationOf?: { _ref?: string } | null;
+      })
+    | null
+  > {
+    const translatedId = `${baseDocumentId}-${language}`;
+    try {
+      const doc = (await this.client.getDocument(translatedId)) as any;
+      if (!doc) return null;
+      // Return minimal safe shape without schema validation (diagnostics only)
+      return {
+        _id: doc._id,
+        title: doc.title,
+        lang: doc.lang,
+        _createdAt: doc._createdAt,
+        _updatedAt: doc._updatedAt,
+        translationOf: doc.translationOf ?? null,
+      } as any;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Get summary of translation documents for provided languages (diagnostics)
+   */
+  async getTranslationDocumentsSummary(
+    baseDocumentId: string,
+    languages: TargetLanguage[]
+  ): Promise<
+    Array<{
+      language: TargetLanguage;
+      exists: boolean;
+      documentId: string;
+      createdAt?: string;
+      updatedAt?: string;
+      translationOf?: string | null;
+    }>
+  > {
+    const results = await Promise.all(
+      languages.map(async language => {
+        const id = this.generateTranslatedId(baseDocumentId, language);
+        const doc = await this.getTranslationDocument(baseDocumentId, language);
+        return {
+          language,
+          exists: Boolean(doc),
+          documentId: id,
+          createdAt: (doc as any)?._createdAt,
+          updatedAt: (doc as any)?._updatedAt,
+          translationOf: (doc as any)?.translationOf?._ref ?? null,
+        };
+      })
+    );
+    return results;
   }
 
   /**

@@ -231,20 +231,24 @@ program
 
       const stats = await engine.getTranslationStats(documentId);
       const usage = await deeplClient.getUsage();
+      const docsSummary = await sanityClient.getTranslationDocumentsSummary(
+        documentId,
+        TARGET_LANGUAGES as any
+      );
 
       if (jsonMode) {
         // Single JSON object only
         console.log(
-          JSON.stringify(
-            {
-              documentId,
-              title: stats.sourceDocument?.title,
-              characterCount: stats.characterCount,
-              estimatedCost: stats.estimatedCost,
-              translationStatus: stats.translationStatus,
-              deeplUsage: usage,
-            }
-          )
+          JSON.stringify({
+            documentId,
+            title: stats.sourceDocument?.title,
+            lang: stats.sourceDocument?.lang,
+            characterCount: stats.characterCount,
+            estimatedCost: stats.estimatedCost,
+            translationStatus: stats.translationStatus,
+            translationDocumentsSummary: docsSummary,
+            deeplUsage: usage,
+          })
         );
       } else {
         logger('Document Statistics', {
