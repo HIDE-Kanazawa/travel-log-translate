@@ -114,8 +114,22 @@ function verifySignature(body: Buffer, sig: string): boolean {
   }
   if (received.includes(',')) {
     const parts = received.split(',').map((p) => p.trim());
-    const sha256Part = parts.find((p) => p.toLowerCase().startsWith('sha256='));
-    received = sha256Part ?? parts[0];
+    // If format is key=value pairs like: t=timestamp,v1=signature
+    const kv: Record<string, string> = {};
+    for (const p of parts) {
+      const eq = p.indexOf('=');
+      if (eq > 0) {
+        const k = p.slice(0, eq).trim().toLowerCase();
+        const v = p.slice(eq + 1).trim();
+        if (k) kv[k] = v;
+      }
+    }
+    if (kv['v1']) {
+      received = kv['v1'];
+    } else {
+      const sha256Part = parts.find((p) => p.toLowerCase().startsWith('sha256='));
+      received = sha256Part ? sha256Part : parts[0];
+    }
   }
   const prefix = 'sha256=';
   const hmac = crypto.createHmac('sha256', appEnv.SANITY_WEBHOOK_SECRET).update(body);
@@ -149,6 +163,7 @@ function verifySignature(body: Buffer, sig: string): boolean {
         expectedB64urlLen: expectedB64url.length,
         rawSignatureSample: raw.slice(0, 120),
         normalizedSample: received.slice(0, 120),
+        parsedCommaSeparated: received.includes(',') ? true : undefined,
       });
     } catch {}
   }
