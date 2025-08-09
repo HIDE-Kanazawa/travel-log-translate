@@ -112,6 +112,7 @@ function verifySignature(body: Buffer, sig: string): boolean {
   if ((received.startsWith('"') && received.endsWith('"')) || (received.startsWith("'") && received.endsWith("'"))) {
     received = received.slice(1, -1);
   }
+  let tValue: string | undefined;
   if (received.includes(',')) {
     const parts = received.split(',').map((p) => p.trim());
     // If format is key=value pairs like: t=timestamp,v1=signature
@@ -126,17 +127,31 @@ function verifySignature(body: Buffer, sig: string): boolean {
     }
     if (kv['v1']) {
       received = kv['v1'];
+      tValue = kv['t'];
     } else {
       const sha256Part = parts.find((p) => p.toLowerCase().startsWith('sha256='));
       received = sha256Part ? sha256Part : parts[0];
     }
   }
   const prefix = 'sha256=';
+  // Candidates computed from plain body
   const hmac = crypto.createHmac('sha256', appEnv.SANITY_WEBHOOK_SECRET).update(body);
   const expectedHex = hmac.digest('hex');
   const hmac2 = crypto.createHmac('sha256', appEnv.SANITY_WEBHOOK_SECRET).update(body);
   const expectedB64 = hmac2.digest('base64');
   const expectedB64url = expectedB64.replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
+  // Candidates computed from `t.body` if tValue is present (Stripe-like scheme)
+  let expectedHexWithT: string | undefined;
+  let expectedB64WithT: string | undefined;
+  let expectedB64urlWithT: string | undefined;
+  if (tValue) {
+    const joined = Buffer.concat([Buffer.from(String(tValue)), Buffer.from('.') , body]);
+    const hmacT1 = crypto.createHmac('sha256', appEnv.SANITY_WEBHOOK_SECRET).update(joined);
+    expectedHexWithT = hmacT1.digest('hex');
+    const hmacT2 = crypto.createHmac('sha256', appEnv.SANITY_WEBHOOK_SECRET).update(joined);
+    expectedB64WithT = hmacT2.digest('base64');
+    expectedB64urlWithT = expectedB64WithT.replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
+  }
   const candidates = [
     expectedHex,
     prefix + expectedHex,
@@ -144,6 +159,9 @@ function verifySignature(body: Buffer, sig: string): boolean {
     prefix + expectedB64,
     expectedB64url,
     prefix + expectedB64url,
+    ...(expectedHexWithT ? [expectedHexWithT, prefix + expectedHexWithT] : []),
+    ...(expectedB64WithT ? [expectedB64WithT, prefix + expectedB64WithT] : []),
+    ...(expectedB64urlWithT ? [expectedB64urlWithT, prefix + expectedB64urlWithT] : []),
   ];
   const lowercaseReceived = received.startsWith(prefix)
     ? prefix + received.slice(prefix.length).toLowerCase()
@@ -161,6 +179,7 @@ function verifySignature(body: Buffer, sig: string): boolean {
         expectedHexLen: expectedHex.length,
         expectedB64Len: expectedB64.length,
         expectedB64urlLen: expectedB64url.length,
+        hasTimestamp: Boolean(tValue),
         rawSignatureSample: raw.slice(0, 120),
         normalizedSample: received.slice(0, 120),
         parsedCommaSeparated: received.includes(',') ? true : undefined,
