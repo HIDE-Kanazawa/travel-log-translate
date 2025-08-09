@@ -213,7 +213,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   await octokit.repos.createDispatchEvent({
     owner: appEnv!.GITHUB_OWNER,
     repo: appEnv!.GITHUB_REPO,
-    ...dispatchPayload,
+    event_type: dispatchPayload.event_type,
+    client_payload: dispatchPayload.client_payload as { [key: string]: unknown },
   });
 
   console.log('GitHub workflow dispatched', {
