@@ -208,7 +208,7 @@ describe('SanityArticleClient', () => {
           title: 'Test Article',
           slug: { _type: 'slug', current: 'test-article-en' },
           lang: 'en',
-          translationOf: { _type: 'reference', _ref: 'article-123' },
+          translationOf: expect.objectContaining({ _type: 'reference', _ref: 'article-123', _weak: true }),
         })
       );
     });
