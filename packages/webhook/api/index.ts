@@ -149,32 +149,47 @@ function initializeServices() {
 /**
  * Verify Sanity webhook signature
  */
+function timingSafeEqStr(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  const ab = Buffer.from(a, 'utf8');
+  const bb = Buffer.from(b, 'utf8');
+  return crypto.timingSafeEqual(ab, bb);
+}
+
 function verifyWebhookSignature(body: Buffer, signature: string): boolean {
-  // Normalize received signature
-  let received = signature.trim();
-  if (!received.startsWith('sha256=')) {
-    received = 'sha256=' + received;
-  }
+  const received = signature.trim();
   const prefix = 'sha256=';
-  const algoLen = prefix.length;
-  const normalized = prefix + received.slice(algoLen).toLowerCase();
 
-  const expectedSignature = crypto
-    .createHmac('sha256', appEnv.SANITY_WEBHOOK_SECRET)
-    .update(body)
-    .digest('hex');
+  // Compute digests
+  const hmac = crypto.createHmac('sha256', appEnv.SANITY_WEBHOOK_SECRET).update(body);
+  const expectedHex = hmac.digest('hex');
+  const hmac2 = crypto.createHmac('sha256', appEnv.SANITY_WEBHOOK_SECRET).update(body);
+  const expectedB64 = hmac2.digest('base64');
+  // base64url (no padding, +/ -> -_)
+  const expectedB64url = expectedB64.replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
 
-  const expectedSignatureString = `sha256=${expectedSignature}`;
+  const candidates = [
+    expectedHex,
+    prefix + expectedHex,
+    expectedB64,
+    prefix + expectedB64,
+    expectedB64url,
+    prefix + expectedB64url,
+  ];
 
-  // Ensure both strings are the same length for timingSafeEqual
-  if (normalized.length !== expectedSignatureString.length) {
-    return false;
+  // Also consider lowercased variant for hex-only values
+  const lowercaseReceived = received.startsWith(prefix)
+    ? prefix + received.slice(prefix.length).toLowerCase()
+    : received.toLowerCase();
+
+  for (const cand of candidates) {
+    // Try direct compare
+    if (timingSafeEqStr(received, cand)) return true;
+    // Try lowercase compare only if candidate looks like hex (length 64 or 71 with prefix)
+    const isHexCand = cand.length === 64 || cand.length === 71;
+    if (isHexCand && timingSafeEqStr(lowercaseReceived, cand)) return true;
   }
-
-  const expectedSignatureBuffer = Buffer.from(expectedSignatureString, 'utf8');
-  const receivedSignatureBuffer = Buffer.from(normalized, 'utf8');
-
-  return crypto.timingSafeEqual(expectedSignatureBuffer, receivedSignatureBuffer);
+  return false;
 }
 
 /**
@@ -327,7 +342,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (!provided) {
         return res.status(400).json({ error: 'Missing X-Debug-Compare-Signature header' });
       }
-      const bodyBuffer = await getRawBody(req);
+      const bodyBuffer: Buffer = (req as any).rawBody instanceof Buffer
+        ? (req as any).rawBody
+        : await getRawBody(req);
       const expected = 'sha256=' + crypto
         .createHmac('sha256', appEnv.SANITY_WEBHOOK_SECRET)
         .update(bodyBuffer)
@@ -355,7 +372,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.status(401).json({ error: 'Missing signature' });
       }
 
-      const bodyBuffer = await getRawBody(req);
+      const bodyBuffer: Buffer = (req as any).rawBody instanceof Buffer
+        ? (req as any).rawBody
+        : await getRawBody(req);
       // Lightweight diagnostics to understand body shape (no secrets)
       try {
         console.log('Webhook body diagnostics', {
