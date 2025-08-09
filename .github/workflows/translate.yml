@@ -70,6 +70,33 @@ jobs:
           echo "triggered-by=$TRIGGERED_BY" >> $GITHUB_OUTPUT
           echo "has-images=$HAS_IMAGES" >> $GITHUB_OUTPUT
 
+      - name: Assert Sanity project/dataset
+        env:
+          SANITY_PROJECT_ID: ${{ secrets.SANITY_PROJECT_ID }}
+          SANITY_DATASET: ${{ secrets.SANITY_DATASET }}
+        run: |
+          set -euo pipefail
+          echo "🔒 Asserting Sanity target matches expected..."
+          echo "Project=${SANITY_PROJECT_ID} Dataset=${SANITY_DATASET}"
+          if [ "${SANITY_PROJECT_ID}" != "fcz6on8p" ] || [ "${SANITY_DATASET}" != "production" ]; then
+            echo "❌ Mismatch: expected project=fcz6on8p,dataset=production but got project=${SANITY_PROJECT_ID},dataset=${SANITY_DATASET}"
+            exit 2
+          fi
+          echo "✅ Sanity target verified: ${SANITY_PROJECT_ID}/${SANITY_DATASET}"
+
+      - name: Pre-translation diagnostics (stats JSON)
+        env:
+          DEEPL_API_KEY: ${{ secrets.DEEPL_API_KEY }}
+          SANITY_PROJECT_ID: ${{ secrets.SANITY_PROJECT_ID }}
+          SANITY_DATASET: ${{ secrets.SANITY_DATASET }}
+          SANITY_TOKEN: ${{ secrets.SANITY_TOKEN }}
+          SANITY_API_VERSION: ${{ secrets.SANITY_API_VERSION }}
+        run: |
+          set -euo pipefail
+          echo "🔍 Running sanity-translate stats (pre) for ${{ steps.extract-info.outputs.document-id }}"
+          pnpm sanity-translate stats "${{ steps.extract-info.outputs.document-id }}" --json 2>&1 | tee pre-stats.json || true
+          echo "📦 pre-stats (first 120 lines):" && sed -n '1,120p' pre-stats.json || true
+
       - name: Run translation
         env:
           DEEPL_API_KEY: ${{ secrets.DEEPL_API_KEY }}
@@ -89,6 +116,33 @@ jobs:
             fi
             pnpm --filter worker run start "${{ steps.extract-info.outputs.document-id }}" --languages pt-br $FORCE_ARG
           fi
+
+      - name: Post-translation diagnostics (stats JSON)
+        if: always()
+        env:
+          DEEPL_API_KEY: ${{ secrets.DEEPL_API_KEY }}
+          SANITY_PROJECT_ID: ${{ secrets.SANITY_PROJECT_ID }}
+          SANITY_DATASET: ${{ secrets.SANITY_DATASET }}
+          SANITY_TOKEN: ${{ secrets.SANITY_TOKEN }}
+          SANITY_API_VERSION: ${{ secrets.SANITY_API_VERSION }}
+        run: |
+          set -euo pipefail
+          echo "🔍 Running sanity-translate stats (post) for ${{ steps.extract-info.outputs.document-id }}"
+          pnpm --silent sanity-translate stats "${{ steps.extract-info.outputs.document-id }}" --json > post-stats.json 2> post-stats.err || true
+          if ! jq -e . post-stats.json > /dev/null 2>&1; then
+            echo "⚠️ post-stats.json is not valid JSON. Attempting salvage..."
+            awk 'BEGIN{p=0} /^\{/ {p=1} p{print}' post-stats.json > post-stats.fixed.json || true
+            if jq -e . post-stats.fixed.json > /dev/null 2>&1; then
+              mv post-stats.fixed.json post-stats.json
+              echo "✅ Salvaged valid JSON for post stats"
+            else
+              echo "❌ Could not parse post-stats.json; showing raw logs"
+              sed -n '1,120p' post-stats.json || true
+              sed -n '1,120p' post-stats.err || true
+            fi
+          fi
+          echo "📦 post-stats (first 120 lines):" && sed -n '1,120p' post-stats.json || true
+          echo "🔎 pt-br exists:" $(jq -r 'try .translationStatus[] | select(.language=="pt-br") | .exists | tostring' post-stats.json | tail -n 1)
 
       - name: Commit translated files
         if: ${{ inputs.dryRun != true }}
