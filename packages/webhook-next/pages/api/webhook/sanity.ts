@@ -106,7 +106,17 @@ function timingSafeEqStr(a: string, b: string): boolean {
 
 function verifySignature(body: Buffer, sig: string): boolean {
   if (!appEnv) return false;
-  const received = sig.trim();
+  // Normalize signature: trim, strip quotes, choose sha256= token if comma-separated
+  const raw = sig;
+  let received = sig.trim();
+  if ((received.startsWith('"') && received.endsWith('"')) || (received.startsWith("'") && received.endsWith("'"))) {
+    received = received.slice(1, -1);
+  }
+  if (received.includes(',')) {
+    const parts = received.split(',').map((p) => p.trim());
+    const sha256Part = parts.find((p) => p.toLowerCase().startsWith('sha256='));
+    received = sha256Part ?? parts[0];
+  }
   const prefix = 'sha256=';
   const hmac = crypto.createHmac('sha256', appEnv.SANITY_WEBHOOK_SECRET).update(body);
   const expectedHex = hmac.digest('hex');
@@ -137,6 +147,8 @@ function verifySignature(body: Buffer, sig: string): boolean {
         expectedHexLen: expectedHex.length,
         expectedB64Len: expectedB64.length,
         expectedB64urlLen: expectedB64url.length,
+        rawSignatureSample: raw.slice(0, 120),
+        normalizedSample: received.slice(0, 120),
       });
     } catch {}
   }
