@@ -150,6 +150,15 @@ function initializeServices() {
  * Verify Sanity webhook signature
  */
 function verifyWebhookSignature(body: Buffer, signature: string): boolean {
+  // Normalize received signature
+  let received = signature.trim();
+  if (!received.startsWith('sha256=')) {
+    received = 'sha256=' + received;
+  }
+  const prefix = 'sha256=';
+  const algoLen = prefix.length;
+  const normalized = prefix + received.slice(algoLen).toLowerCase();
+
   const expectedSignature = crypto
     .createHmac('sha256', appEnv.SANITY_WEBHOOK_SECRET)
     .update(body)
@@ -158,12 +167,12 @@ function verifyWebhookSignature(body: Buffer, signature: string): boolean {
   const expectedSignatureString = `sha256=${expectedSignature}`;
 
   // Ensure both strings are the same length for timingSafeEqual
-  if (signature.length !== expectedSignatureString.length) {
+  if (normalized.length !== expectedSignatureString.length) {
     return false;
   }
 
   const expectedSignatureBuffer = Buffer.from(expectedSignatureString, 'utf8');
-  const receivedSignatureBuffer = Buffer.from(signature, 'utf8');
+  const receivedSignatureBuffer = Buffer.from(normalized, 'utf8');
 
   return crypto.timingSafeEqual(expectedSignatureBuffer, receivedSignatureBuffer);
 }
@@ -347,6 +356,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
 
       const bodyBuffer = await getRawBody(req);
+      // Lightweight diagnostics to understand body shape (no secrets)
+      try {
+        console.log('Webhook body diagnostics', {
+          bodyType: typeof (req as any).body,
+          isBuffer: Buffer.isBuffer((req as any).body),
+          rawLen: bodyBuffer.length,
+          contentLength: req.headers['content-length'],
+          contentType: req.headers['content-type'],
+          contentEncoding: req.headers['content-encoding'],
+          sigLen: signature.length,
+        });
+      } catch {}
       if (!verifyWebhookSignature(bodyBuffer, signature)) {
         console.warn('Invalid webhook signature', {
           hasSignature: true,
