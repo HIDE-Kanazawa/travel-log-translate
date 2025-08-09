@@ -113,7 +113,7 @@ jobs:
           if [ "${{ inputs.dryRun }}" = "true" ]; then
             echo "🔍 Dry run mode - checking translation conditions"
             pnpm --filter worker run build
-            node packages/worker/dist/index.js "${{ steps.extract-info.outputs.document-id }}" --languages pt-br --dry-run
+            node packages/worker/dist/index.js "${{ steps.extract-info.outputs.document-id }}" --dry-run
           else
             echo "🚀 Starting translation for document: ${{ steps.extract-info.outputs.document-id }}"
             FORCE_ARG=""
@@ -121,7 +121,7 @@ jobs:
               FORCE_ARG="--force"
             fi
             pnpm --filter worker run build
-            node packages/worker/dist/index.js "${{ steps.extract-info.outputs.document-id }}" --languages pt-br $FORCE_ARG
+            node packages/worker/dist/index.js "${{ steps.extract-info.outputs.document-id }}" $FORCE_ARG
           fi
 
       - name: Post-translation diagnostics (stats JSON)

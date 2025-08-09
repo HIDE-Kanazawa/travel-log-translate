@@ -190,6 +190,7 @@ export class SanityArticleClient {
       translationOf: {
         _type: 'reference',
         _ref: baseDocument._id,
+        _weak: true,
       },
       tags: translatedTags,
       // Copy required fields
