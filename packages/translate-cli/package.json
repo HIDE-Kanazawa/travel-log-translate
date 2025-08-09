@@ -2,7 +2,6 @@
   "name": "translate-cli",
   "version": "0.1.0",
   "description": "CLI tool for translating Japanese markdown files to multiple languages using DeepL API",
-  "type": "module",
   "main": "dist/index.js",
   "bin": {
     "translate": "dist/index.js"
