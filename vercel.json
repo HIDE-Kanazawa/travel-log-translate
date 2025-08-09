@@ -1,35 +1,3 @@
 {
-  "version": 2,
-  "name": "travel-log-webhook",
-  "buildCommand": "pnpm install --no-frozen-lockfile && pnpm build",
-  "builds": [
-    {
-      "src": "packages/webhook/api/index.ts",
-      "use": "@vercel/node"
-    }
-  ],
-  "routes": [
-    {
-      "src": "/webhook/sanity",
-      "dest": "packages/webhook/api/index.ts",
-      "methods": ["POST"]
-    },
-    {
-      "src": "/trigger/(.*)",
-      "dest": "packages/webhook/api/index.ts",
-      "methods": ["POST"]
-    },
-    {
-      "src": "/health",
-      "dest": "packages/webhook/api/index.ts",
-      "methods": ["GET"]
-    },
-    {
-      "src": "/(.*)",
-      "dest": "packages/webhook/api/index.ts"
-    }
-  ],
-  "env": {
-    "NODE_ENV": "production"
-  }
+  "version": 2
 }
