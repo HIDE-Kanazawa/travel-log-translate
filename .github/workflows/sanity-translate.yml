@@ -115,11 +115,26 @@ jobs:
           echo "🔍 Checking document stats and API quota..."
           echo "📄 Document: ${{ steps.extract-params.outputs.DOCUMENT_ID }}"
           # Capture stderr to a file for diagnostics
-          if ! pnpm sanity-translate stats "${{ steps.extract-params.outputs.DOCUMENT_ID }}" --json > stats.json 2> stats.err; then
+          if ! pnpm --silent sanity-translate stats "${{ steps.extract-params.outputs.DOCUMENT_ID }}" --json > stats.json 2> stats.err; then
             echo "❌ Failed to fetch stats"
             echo "--- stderr ---" && cat stats.err || true
             echo "--- stdout (partial) ---" && head -200 stats.json || true
             exit 30
+          fi
+
+          # Validate JSON; some tools may print non-JSON preface. Try to salvage.
+          if ! jq -e . stats.json > /dev/null 2>&1; then
+            echo "⚠️ stats.json is not valid JSON. Attempting to salvage from first '{'..."
+            awk 'BEGIN{p=0} /^\{/ {p=1} p{print}' stats.json > stats.fixed.json || true
+            if jq -e . stats.fixed.json > /dev/null 2>&1; then
+              mv stats.fixed.json stats.json
+              echo "✅ Salvaged valid JSON from stats.json"
+            else
+              echo "❌ Could not parse stats.json as JSON"
+              echo "--- stats.json ---" && sed -n '1,120p' stats.json || true
+              echo "--- stats.err ---" && sed -n '1,120p' stats.err || true
+              exit 31
+            fi
           fi
           
           # Extract quota percentage from stats
