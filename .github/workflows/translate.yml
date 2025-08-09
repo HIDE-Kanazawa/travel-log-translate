@@ -83,22 +83,21 @@ jobs:
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          
+
           # Add any new translation files
           git add -A
-          
+
           # Check if there are changes to commit
           if git diff --staged --quiet; then
             echo "No translation files to commit"
           else
-            git commit -m "chore: add translations for ${{ steps.extract-info.outputs.title }}
+            git commit \
+              -m "chore: add translations for ${{ steps.extract-info.outputs.title }}" \
+              -m "Triggered by: ${{ steps.extract-info.outputs.triggered-by }}" \
+              -m "Document ID: ${{ steps.extract-info.outputs.document-id }}" \
+              -m "Has images: ${{ steps.extract-info.outputs.has-images }}" \
+              -m "Co-Authored-By: Claude <noreply@anthropic.com>"
 
-Triggered by: ${{ steps.extract-info.outputs.triggered-by }}
-Document ID: ${{ steps.extract-info.outputs.document-id }}
-Has images: ${{ steps.extract-info.outputs.has-images }}
-
-Co-Authored-By: Claude <noreply@anthropic.com>"
-            
             git push
             echo "✅ Translations committed and pushed"
           fi
