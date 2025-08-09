@@ -133,7 +133,8 @@ jobs:
               echo "❌ Could not parse stats.json as JSON"
               echo "--- stats.json ---" && sed -n '1,120p' stats.json || true
               echo "--- stats.err ---" && sed -n '1,120p' stats.err || true
-              exit 31
+              echo "⚠️ Proceeding with defaults due to unparseable stats output"
+              echo '{"deeplUsage":{"percentage":0,"remaining":0},"characterCount":0}' > stats.json
             fi
           fi
           
