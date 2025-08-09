@@ -45,6 +45,11 @@ jobs:
         with:
           version: 8
 
+      - name: Install utilities (jq, bc)
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y jq bc
+
       - name: Get pnpm store directory
         shell: bash
         run: |
@@ -104,10 +109,18 @@ jobs:
           DEEPL_API_KEY: ${{ secrets.DEEPL_API_KEY }}
           SANITY_PROJECT_ID: ${{ secrets.SANITY_PROJECT_ID }}
           SANITY_DATASET: ${{ secrets.SANITY_DATASET }}
-          SANITY_TOKEN: ${{ secrets.SANITY_WRITE_TOKEN }}
+          SANITY_TOKEN: ${{ secrets.SANITY_TOKEN }}
         run: |
+          set -euo pipefail
           echo "🔍 Checking document stats and API quota..."
-          pnpm sanity-translate stats "${{ steps.extract-params.outputs.DOCUMENT_ID }}" --json > stats.json
+          echo "📄 Document: ${{ steps.extract-params.outputs.DOCUMENT_ID }}"
+          # Capture stderr to a file for diagnostics
+          if ! pnpm sanity-translate stats "${{ steps.extract-params.outputs.DOCUMENT_ID }}" --json > stats.json 2> stats.err; then
+            echo "❌ Failed to fetch stats"
+            echo "--- stderr ---" && cat stats.err || true
+            echo "--- stdout (partial) ---" && head -200 stats.json || true
+            exit 30
+          fi
           
           # Extract quota percentage from stats
           QUOTA_PERCENTAGE=$(cat stats.json | jq -r '.deeplUsage.percentage // 0')
@@ -136,7 +149,7 @@ jobs:
           DEEPL_API_KEY: ${{ secrets.DEEPL_API_KEY }}
           SANITY_PROJECT_ID: ${{ secrets.SANITY_PROJECT_ID }}
           SANITY_DATASET: ${{ secrets.SANITY_DATASET }}
-          SANITY_TOKEN: ${{ secrets.SANITY_WRITE_TOKEN }}
+          SANITY_TOKEN: ${{ secrets.SANITY_TOKEN }}
         run: |
           echo "🌍 Starting translation process..."
           
@@ -162,7 +175,7 @@ jobs:
           DEEPL_API_KEY: ${{ secrets.DEEPL_API_KEY }}
           SANITY_PROJECT_ID: ${{ secrets.SANITY_PROJECT_ID }}
           SANITY_DATASET: ${{ secrets.SANITY_DATASET }}
-          SANITY_TOKEN: ${{ secrets.SANITY_WRITE_TOKEN }}
+          SANITY_TOKEN: ${{ secrets.SANITY_TOKEN }}
         run: |
           echo "🔍 Validating translation results..."
           
