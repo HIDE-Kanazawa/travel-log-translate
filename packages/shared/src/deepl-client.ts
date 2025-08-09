@@ -121,14 +121,16 @@ export class DeepLClient {
 
         if (attempt === maxRetries) break;
 
-        // Base exponential delay
+        // Base exponential delay with an upper bound to avoid excessive waits in CI
         let delay = initialDelay * Math.pow(2, attempt);
+        const MAX_DELAY_MS = 4000; // cap per-attempt delay to keep retries within test timeouts
+        if (delay > MAX_DELAY_MS) delay = MAX_DELAY_MS;
 
         // Heavier backoff on 429/TooManyRequests
         const message = (lastError?.message || '').toLowerCase();
         const isTooMany = message.includes('too many requests') || message.includes('429');
         if (isTooMany) {
-          delay = Math.floor(delay * 1.5);
+          delay = Math.floor(Math.min(MAX_DELAY_MS, delay * 1.5));
         }
 
         // Add small jitter to avoid thundering herd
