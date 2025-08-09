@@ -39,7 +39,7 @@ jobs:
       - name: Build packages
         run: |
           pnpm --filter shared build
-          pnpm --filter translate-cli build
+          pnpm --filter worker build
 
       - name: Extract document info
         id: extract-info
@@ -71,10 +71,10 @@ jobs:
         run: |
           if [ "${{ inputs.dryRun }}" = "true" ]; then
             echo "🔍 Dry run mode - checking translation conditions"
-            pnpm translate --document-id "${{ steps.extract-info.outputs.document-id }}" --dry-run
+            pnpm --filter worker run start "${{ steps.extract-info.outputs.document-id }}" --languages pt-br --dry-run
           else
             echo "🚀 Starting translation for document: ${{ steps.extract-info.outputs.document-id }}"
-            pnpm translate --document-id "${{ steps.extract-info.outputs.document-id }}" --target all
+            pnpm --filter worker run start "${{ steps.extract-info.outputs.document-id }}" --languages pt-br
           fi
 
       - name: Commit translated files
