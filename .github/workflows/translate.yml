@@ -1,5 +1,9 @@
 name: Smart Translation Workflow
 
+concurrency:
+  group: translate-${{ github.event.client_payload.documentId || inputs.documentId || inputs.document_id || github.run_id }}
+  cancel-in-progress: true
+
 on:
   repository_dispatch:
     types: [sanity_article_ja]
@@ -9,6 +13,11 @@ on:
         description: 'Sanity document ID to translate'
         required: true
         type: string
+      force:
+        description: 'Force re-translation even if translations exist'
+        required: false
+        type: boolean
+        default: false
       dryRun:
         description: 'Dry run mode'
         required: false
@@ -74,7 +83,11 @@ jobs:
             pnpm --filter worker run start "${{ steps.extract-info.outputs.document-id }}" --languages pt-br --dry-run
           else
             echo "🚀 Starting translation for document: ${{ steps.extract-info.outputs.document-id }}"
-            pnpm --filter worker run start "${{ steps.extract-info.outputs.document-id }}" --languages pt-br
+            FORCE_ARG=""
+            if [ "${{ inputs.force }}" = "true" ]; then
+              FORCE_ARG="--force"
+            fi
+            pnpm --filter worker run start "${{ steps.extract-info.outputs.document-id }}" --languages pt-br $FORCE_ARG
           fi
 
       - name: Commit translated files
