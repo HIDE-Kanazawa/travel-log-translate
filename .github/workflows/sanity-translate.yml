@@ -2,7 +2,6 @@ name: Sanity Article Translation
 
 on:
   repository_dispatch:
-    types: [sanity_article_ja]
   workflow_dispatch:
     inputs:
       document_id:
@@ -32,6 +31,14 @@ jobs:
       SANITY_API_VERSION: ${{ secrets.SANITY_API_VERSION }}
 
     steps:
+      - name: Log repository_dispatch action
+        run: |
+          echo "event_name=${{ github.event_name }} action=${{ github.event.action }}"
+          echo "client_payload=${{ toJson(github.event.client_payload) }}"
+          if [ "${{ github.event_name }}" = "repository_dispatch" ] && [ "${{ github.event.action }}" != "sanity_article_ja" ]; then
+            echo "Ignoring repository_dispatch action ${{ github.event.action }} (expecting sanity_article_ja)"
+            exit 0
+          fi
       - name: Checkout repository
         uses: actions/checkout@v4
 
