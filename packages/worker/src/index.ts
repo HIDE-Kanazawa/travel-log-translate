@@ -217,7 +217,9 @@ program
   .argument('<document-id>', 'Sanity document ID')
   .option('--json', 'Output JSON format', false)
   .action(async (documentId: string, options) => {
-    const logger = createLogger(options.json);
+    // When --json is provided, suppress all log lines and emit exactly one JSON object
+    const jsonMode: boolean = Boolean(options.json);
+    const logger = jsonMode ? ((_: string, __?: any) => {}) : createLogger(false);
 
     try {
       const env = validateEnvironment(process.env);
@@ -230,7 +232,8 @@ program
       const stats = await engine.getTranslationStats(documentId);
       const usage = await deeplClient.getUsage();
 
-      if (options.json) {
+      if (jsonMode) {
+        // Single JSON object only
         console.log(
           JSON.stringify(
             {
@@ -240,9 +243,7 @@ program
               estimatedCost: stats.estimatedCost,
               translationStatus: stats.translationStatus,
               deeplUsage: usage,
-            },
-            null,
-            2
+            }
           )
         );
       } else {
@@ -267,9 +268,18 @@ program
         });
       }
     } catch (error) {
-      logger('❌ Failed to get stats', {
-        error: error instanceof Error ? error.message : String(error),
-      });
+      if (jsonMode) {
+        console.log(
+          JSON.stringify({
+            error: error instanceof Error ? error.message : String(error),
+          })
+        );
+      } else {
+        const loggerHuman = createLogger(false);
+        loggerHuman('❌ Failed to get stats', {
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
       process.exit(1);
     }
   });
