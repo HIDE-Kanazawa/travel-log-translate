@@ -309,96 +309,59 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       repo: appEnv!.GITHUB_REPO,
       eventType: dispatchPayload.event_type,
     });
-    // Fallback: also trigger workflow_dispatch explicitly in case repository_dispatch doesn't start a run
+    // Poll for repository_dispatch-triggered run; if none appears, fallback to workflow_dispatch (translate.yml)
     try {
-      // Diagnostic: check if GitHub recognizes the workflow file
-      try {
-        const wfInfo = await octokit.actions.getWorkflow({
-          owner: appEnv!.GITHUB_OWNER,
-          repo: appEnv!.GITHUB_REPO,
-          workflow_id: 'sanity-translate.yml',
-        });
-        console.log('Workflow metadata', {
-          id: wfInfo.data.id,
-          name: wfInfo.data.name,
-          path: wfInfo.data.path,
-          state: wfInfo.data.state,
-          created_at: wfInfo.data.created_at,
-          updated_at: wfInfo.data.updated_at,
-        });
-      } catch (metaErr: any) {
-        console.error('Failed to get workflow metadata', {
-          status: metaErr?.status ?? metaErr?.response?.status,
-          message: metaErr?.message,
-        });
-      }
-      // Diagnostic: list workflows
-      try {
-        const list = await octokit.actions.listRepoWorkflows({
-          owner: appEnv!.GITHUB_OWNER,
-          repo: appEnv!.GITHUB_REPO,
-          per_page: 50,
-        });
-        console.log('Repo workflows (top)', {
-          total_count: list.data.total_count,
-          names: list.data.workflows?.map(w => ({ name: w.name, path: w.path })),
-        });
-      } catch (listErr: any) {
-        console.error('Failed to list repo workflows', {
-          status: listErr?.status ?? listErr?.response?.status,
-          message: listErr?.message,
-        });
-      }
-
-      // Small delay to allow GitHub to register workflow changes
-      await new Promise((r) => setTimeout(r, 1500));
-
-      const wfResp = await octokit.actions.createWorkflowDispatch({
-        owner: appEnv!.GITHUB_OWNER,
-        repo: appEnv!.GITHUB_REPO,
-        workflow_id: 'sanity-translate.yml',
-        ref: 'main',
-        inputs: {
-          document_id: String(payload._id ?? ''),
-          base_lang: 'ja',
-          target_lang: 'pt-br',
-        },
-      });
-      console.log('GitHub workflow_dispatch response', {
-        status: wfResp.status,
-        workflow: 'sanity-translate.yml',
-        ref: 'main',
-      });
-    } catch (wfErr: any) {
-      const status = (wfErr?.status ?? wfErr?.response?.status) as number | undefined;
-      console.error('GitHub workflow_dispatch failed', {
-        status,
-        message: wfErr?.message,
-      });
-      // If 422 about missing workflow_dispatch, try an alternative workflow file as a fallback
-      if (status === 422) {
+      const deadlineMs = Date.now() + 20_000; // up to ~20s
+      let detected = false;
+      while (Date.now() < deadlineMs && !detected) {
+        await new Promise((r) => setTimeout(r, 2000));
         try {
-          const altResp = await octokit.actions.createWorkflowDispatch({
+          const runs = await octokit.actions.listWorkflowRunsForRepo({
             owner: appEnv!.GITHUB_OWNER,
             repo: appEnv!.GITHUB_REPO,
-            workflow_id: 'translate.yml',
-            ref: 'main',
-            inputs: {
-              documentId: String(payload._id ?? ''),
-            },
+            event: 'repository_dispatch',
+            per_page: 20,
           });
-          console.log('GitHub workflow_dispatch response (fallback translate.yml)', {
-            status: altResp.status,
-            workflow: 'translate.yml',
-            ref: 'main',
-          });
-        } catch (altErr: any) {
-          console.error('Fallback workflow_dispatch failed (translate.yml)', {
-            status: altErr?.status ?? altErr?.response?.status,
-            message: altErr?.message,
+          const matched = runs.data.workflow_runs?.find((run) => run?.path === '.github/workflows/translate.yml');
+          if (matched) {
+            console.log('Detected repository_dispatch workflow run', {
+              id: matched.id,
+              status: matched.status,
+              conclusion: matched.conclusion,
+              path: matched.path,
+              created_at: matched.created_at,
+            });
+            detected = true;
+            break;
+          }
+        } catch (listErr: any) {
+          console.error('Error while polling workflow runs', {
+            status: listErr?.status ?? listErr?.response?.status,
+            message: listErr?.message,
           });
         }
       }
+      if (!detected) {
+        const altResp = await octokit.actions.createWorkflowDispatch({
+          owner: appEnv!.GITHUB_OWNER,
+          repo: appEnv!.GITHUB_REPO,
+          workflow_id: 'translate.yml',
+          ref: 'main',
+          inputs: {
+            documentId: String(payload._id ?? ''),
+          },
+        });
+        console.log('Fallback workflow_dispatch (translate.yml) invoked', {
+          status: altResp.status,
+          workflow: 'translate.yml',
+          ref: 'main',
+        });
+      }
+    } catch (pollErr: any) {
+      console.error('Polling/fallback workflow dispatch error', {
+        status: pollErr?.status ?? pollErr?.response?.status,
+        message: pollErr?.message,
+      });
     }
     return res.json({
       message: 'Translation workflow triggered',
