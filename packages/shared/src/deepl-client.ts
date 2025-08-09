@@ -12,7 +12,7 @@ export class DeepLClient {
   private cache: Map<string, TranslationCacheEntry> = new Map();
   private cachePath: string;
   private lastRequestTime = 0;
-  private readonly MIN_REQUEST_INTERVAL = 100; // 10 req/sec
+  private readonly MIN_REQUEST_INTERVAL = 300; // ~3 req/sec; be conservative for CI
 
   constructor(apiKey: string, cacheDir = '.deepl-cache') {
     this.translator = new deepl.Translator(apiKey);
@@ -108,8 +108,8 @@ export class DeepLClient {
    */
   private async retryWithBackoff<T>(
     operation: () => Promise<T>,
-    maxRetries = 3,
-    initialDelay = 500
+    maxRetries = 5,
+    initialDelay = 1000
   ): Promise<T> {
     let lastError: Error;
 
@@ -121,7 +121,19 @@ export class DeepLClient {
 
         if (attempt === maxRetries) break;
 
-        const delay = initialDelay * Math.pow(2, attempt);
+        // Base exponential delay
+        let delay = initialDelay * Math.pow(2, attempt);
+
+        // Heavier backoff on 429/TooManyRequests
+        const message = (lastError?.message || '').toLowerCase();
+        const isTooMany = message.includes('too many requests') || message.includes('429');
+        if (isTooMany) {
+          delay = Math.floor(delay * 1.5);
+        }
+
+        // Add small jitter to avoid thundering herd
+        delay += Math.floor(Math.random() * 200);
+
         console.warn(
           `DeepL request failed (attempt ${attempt + 1}), retrying in ${delay}ms:`,
           error
@@ -273,12 +285,22 @@ export class DeepLClient {
     usedCache: boolean[];
     totalCharacterCount: number;
   }> {
-    const results = await Promise.all(texts.map(text => this.translateText(text, targetLanguage)));
+    // Process sequentially to respect rate limits more reliably in CI
+    const translations: string[] = [];
+    const usedCache: boolean[] = [];
+    let totalCharacterCount = 0;
+
+    for (const text of texts) {
+      const r = await this.translateText(text, targetLanguage);
+      translations.push(r.translation);
+      usedCache.push(r.usedCache);
+      totalCharacterCount += r.characterCount;
+    }
 
     return {
-      translations: results.map(r => r.translation),
-      usedCache: results.map(r => r.usedCache),
-      totalCharacterCount: results.reduce((sum, r) => sum + r.characterCount, 0),
+      translations,
+      usedCache,
+      totalCharacterCount,
     };
   }
 
