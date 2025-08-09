@@ -295,22 +295,41 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     },
   });
 
-  await octokit.repos.createDispatchEvent({
-    owner: appEnv!.GITHUB_OWNER,
-    repo: appEnv!.GITHUB_REPO,
-    event_type: dispatchPayload.event_type,
-    client_payload: dispatchPayload.client_payload as { [key: string]: unknown },
-  });
-
-  console.log('GitHub workflow dispatched', {
-    documentId: payload._id,
-    owner: appEnv!.GITHUB_OWNER,
-    repo: appEnv!.GITHUB_REPO,
-  });
-
-  return res.json({
-    message: 'Translation workflow triggered',
-    documentId: payload._id,
-    timestamp: new Date().toISOString(),
-  });
+  try {
+    const resp = await octokit.repos.createDispatchEvent({
+      owner: appEnv!.GITHUB_OWNER,
+      repo: appEnv!.GITHUB_REPO,
+      event_type: dispatchPayload.event_type,
+      client_payload: dispatchPayload.client_payload as { [key: string]: unknown },
+    });
+    console.log('GitHub repository_dispatch response', {
+      status: resp.status,
+      documentId: payload._id,
+      owner: appEnv!.GITHUB_OWNER,
+      repo: appEnv!.GITHUB_REPO,
+      eventType: dispatchPayload.event_type,
+    });
+    return res.json({
+      message: 'Translation workflow triggered',
+      dispatched: resp.status === 204,
+      status: resp.status,
+      documentId: payload._id,
+      timestamp: new Date().toISOString(),
+    });
+  } catch (e: any) {
+    const err = e as Error & { status?: number; response?: any };
+    console.error('GitHub repository_dispatch failed', {
+      status: err?.status ?? err?.response?.status,
+      message: err?.message,
+      documentId: payload._id,
+      owner: appEnv!.GITHUB_OWNER,
+      repo: appEnv!.GITHUB_REPO,
+      eventType: dispatchPayload.event_type,
+    });
+    return res.status(502).json({
+      error: 'Failed to dispatch GitHub workflow',
+      status: err?.status ?? err?.response?.status,
+      message: err?.message,
+    });
+  }
 }
