@@ -384,7 +384,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             workflow_id: 'translate.yml',
             ref: 'main',
             inputs: {
-              document_id: String(payload._id ?? ''),
+              documentId: String(payload._id ?? ''),
             },
           });
           console.log('GitHub workflow_dispatch response (fallback translate.yml)', {
