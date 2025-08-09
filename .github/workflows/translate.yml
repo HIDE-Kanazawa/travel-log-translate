@@ -24,6 +24,9 @@ on:
         type: boolean
         default: false
 
+permissions:
+  contents: write
+
 jobs:
   translate:
     runs-on: ubuntu-latest
@@ -94,7 +97,9 @@ jobs:
         run: |
           set -euo pipefail
           echo "🔍 Running sanity-translate stats (pre) for ${{ steps.extract-info.outputs.document-id }}"
-          pnpm sanity-translate stats "${{ steps.extract-info.outputs.document-id }}" --json 2>&1 | tee pre-stats.json || true
+          # ensure latest build is used and emit pure JSON only
+          pnpm --filter worker run build
+          node packages/worker/dist/index.js stats "${{ steps.extract-info.outputs.document-id }}" --json > pre-stats.json 2> pre-stats.err || true
           echo "📦 pre-stats (first 120 lines):" && sed -n '1,120p' pre-stats.json || true
 
       - name: Run translation
@@ -107,14 +112,16 @@ jobs:
         run: |
           if [ "${{ inputs.dryRun }}" = "true" ]; then
             echo "🔍 Dry run mode - checking translation conditions"
-            pnpm --filter worker run start "${{ steps.extract-info.outputs.document-id }}" --languages pt-br --dry-run
+            pnpm --filter worker run build
+            node packages/worker/dist/index.js "${{ steps.extract-info.outputs.document-id }}" --languages pt-br --dry-run
           else
             echo "🚀 Starting translation for document: ${{ steps.extract-info.outputs.document-id }}"
             FORCE_ARG=""
             if [ "${{ inputs.force }}" = "true" ]; then
               FORCE_ARG="--force"
             fi
-            pnpm --filter worker run start "${{ steps.extract-info.outputs.document-id }}" --languages pt-br $FORCE_ARG
+            pnpm --filter worker run build
+            node packages/worker/dist/index.js "${{ steps.extract-info.outputs.document-id }}" --languages pt-br $FORCE_ARG
           fi
 
       - name: Post-translation diagnostics (stats JSON)
@@ -128,7 +135,8 @@ jobs:
         run: |
           set -euo pipefail
           echo "🔍 Running sanity-translate stats (post) for ${{ steps.extract-info.outputs.document-id }}"
-          pnpm --silent sanity-translate stats "${{ steps.extract-info.outputs.document-id }}" --json > post-stats.json 2> post-stats.err || true
+          pnpm --filter worker run build
+          node packages/worker/dist/index.js stats "${{ steps.extract-info.outputs.document-id }}" --json > post-stats.json 2> post-stats.err || true
           if ! jq -e . post-stats.json > /dev/null 2>&1; then
             echo "⚠️ post-stats.json is not valid JSON. Attempting salvage..."
             awk 'BEGIN{p=0} /^\{/ {p=1} p{print}' post-stats.json > post-stats.fixed.json || true
