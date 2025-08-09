@@ -58,7 +58,8 @@ export class SanityArticleClient {
       const isArticle = doc._type === 'article';
       const langMatches = doc.lang === language;
       const refMatches = !!doc.translationOf && doc.translationOf._ref === baseDocumentId;
-      return Boolean(isArticle && langMatches && refMatches);
+      const idMatches = doc._id === translatedId;
+      return Boolean(isArticle && langMatches && (refMatches || idMatches));
     } catch {
       return false;
     }

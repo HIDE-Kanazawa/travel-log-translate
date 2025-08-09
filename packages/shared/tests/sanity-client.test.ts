@@ -21,6 +21,7 @@ describe('SanityArticleClient', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     config = {
+      DEEPL_API_KEY: 'test-key',
       SANITY_PROJECT_ID: 'test-project',
       SANITY_DATASET: 'test-dataset',
       SANITY_TOKEN: 'test-token',
@@ -90,7 +91,12 @@ describe('SanityArticleClient', () => {
 
   describe('translationExists', () => {
     it('should return true if translation exists', async () => {
-      mockClient.getDocument.mockResolvedValue({ _id: 'article-123-en' });
+      mockClient.getDocument.mockResolvedValue({
+        _id: 'article-123-en',
+        _type: 'article',
+        lang: 'en',
+        translationOf: { _ref: 'article-123' },
+      });
 
       const exists = await client.translationExists('article-123', 'en');
 
@@ -151,7 +157,12 @@ describe('SanityArticleClient', () => {
     };
 
     it('should skip creation if translation already exists', async () => {
-      mockClient.getDocument.mockResolvedValue({ _id: 'existing-translation' });
+      mockClient.getDocument.mockResolvedValue({
+        _id: 'article-123-en',
+        _type: 'article',
+        lang: 'en',
+        translationOf: { _ref: 'article-123' },
+      });
 
       const result = await client.createOrUpdateTranslation(
         mockArticle,
@@ -281,9 +292,19 @@ describe('SanityArticleClient', () => {
   describe('getTranslationStatus', () => {
     it('should return translation status for all languages', async () => {
       mockClient.getDocument
-        .mockResolvedValueOnce({ _id: 'article-123-en' }) // en exists
+        .mockResolvedValueOnce({
+          _id: 'article-123-en',
+          _type: 'article',
+          lang: 'en',
+          translationOf: { _ref: 'article-123' },
+        }) // en exists
         .mockResolvedValueOnce(null) // fr doesn't exist
-        .mockResolvedValueOnce({ _id: 'article-123-de' }); // de exists
+        .mockResolvedValueOnce({
+          _id: 'article-123-de',
+          _type: 'article',
+          lang: 'de',
+          translationOf: { _ref: 'article-123' },
+        }); // de exists
 
       const status = await client.getTranslationStatus('article-123', ['en', 'fr', 'de']);
 
