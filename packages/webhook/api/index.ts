@@ -353,17 +353,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         'sanity-operation',
         'x-sanity-operation',
         'x-sanity-event',
-      ]) as string;
-      
-      // Only process 'update' operations for smart translation
-      if (operation !== 'update') {
-        console.log('Webhook ignored - not an update operation', {
-          operation,
+      ]) as string | undefined;
+
+      // Accept 'update' and 'create'. If header is missing, proceed but log it.
+      const op = operation?.toLowerCase();
+      if (op && op !== 'update' && op !== 'create') {
+        console.log('Webhook ignored - unsupported operation', {
+          operation: op,
           documentId: getHeader(req, ['sanity-document-id', 'x-sanity-document-id']),
         });
         return res.json({
-          message: 'Webhook ignored - only update operations trigger translation',
-          operation,
+          message: 'Webhook ignored - unsupported operation',
+          operation: op,
+        });
+      }
+      if (!op) {
+        console.log('Webhook proceeding - missing operation header, assuming update', {
+          documentId: getHeader(req, ['sanity-document-id', 'x-sanity-document-id']),
         });
       }
 
