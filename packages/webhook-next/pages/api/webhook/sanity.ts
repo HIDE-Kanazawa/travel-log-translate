@@ -309,6 +309,30 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       repo: appEnv!.GITHUB_REPO,
       eventType: dispatchPayload.event_type,
     });
+    // Fallback: also trigger workflow_dispatch explicitly in case repository_dispatch doesn't start a run
+    try {
+      const wfResp = await octokit.actions.createWorkflowDispatch({
+        owner: appEnv!.GITHUB_OWNER,
+        repo: appEnv!.GITHUB_REPO,
+        workflow_id: 'sanity-translate.yml',
+        ref: 'main',
+        inputs: {
+          document_id: String(payload._id ?? ''),
+          base_lang: 'ja',
+          target_lang: 'pt-br',
+        },
+      });
+      console.log('GitHub workflow_dispatch response', {
+        status: wfResp.status,
+        workflow: 'sanity-translate.yml',
+        ref: 'main',
+      });
+    } catch (wfErr: any) {
+      console.error('GitHub workflow_dispatch failed', {
+        status: wfErr?.status ?? wfErr?.response?.status,
+        message: wfErr?.message,
+      });
+    }
     return res.json({
       message: 'Translation workflow triggered',
       dispatched: resp.status === 204,
