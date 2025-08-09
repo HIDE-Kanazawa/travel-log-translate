@@ -194,9 +194,27 @@ jobs:
           SANITY_TOKEN: ${{ secrets.SANITY_TOKEN }}
         run: |
           echo "🔍 Validating translation results..."
-          
-          # Get updated stats
-          pnpm sanity-translate stats "${{ steps.extract-params.outputs.DOCUMENT_ID }}" --json > final-stats.json
+          set -euo pipefail
+          # Get updated stats (silent) and capture errors
+          if ! pnpm --silent sanity-translate stats "${{ steps.extract-params.outputs.DOCUMENT_ID }}" --json > final-stats.json 2> final-stats.err; then
+            echo "⚠️ Failed to fetch final stats; using defaults"
+            echo '{"translationStatus":[],"deeplUsage":{"percentage":0}}' > final-stats.json
+          fi
+
+          # Validate/salvage JSON
+          if ! jq -e . final-stats.json > /dev/null 2>&1; then
+            echo "⚠️ final-stats.json is not valid JSON. Attempting to salvage..."
+            awk 'BEGIN{p=0} /^\{/ {p=1} p{print}' final-stats.json > final-stats.fixed.json || true
+            if jq -e . final-stats.fixed.json > /dev/null 2>&1; then
+              mv final-stats.fixed.json final-stats.json
+              echo "✅ Salvaged valid JSON for final stats"
+            else
+              echo "❌ Could not parse final-stats.json as JSON; proceeding with defaults"
+              echo "--- final-stats.json ---" && sed -n '1,120p' final-stats.json || true
+              echo "--- final-stats.err ---" && sed -n '1,120p' final-stats.err || true
+              echo '{"translationStatus":[],"deeplUsage":{"percentage":0}}' > final-stats.json
+            fi
+          fi
           
           COMPLETED_TRANSLATIONS=$(cat final-stats.json | jq -r '.translationStatus | map(select(.exists)) | length')
           TOTAL_LANGUAGES=$(cat final-stats.json | jq -r '.translationStatus | length')
@@ -223,6 +241,11 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           
           if [ -f "final-stats.json" ]; then
+            # Guard parsing with defaults if jq fails here
+            if ! jq -e . final-stats.json > /dev/null 2>&1; then
+              echo "⚠️ summary: final-stats.json invalid; using defaults"
+              echo '{"translationStatus":[],"deeplUsage":{"percentage":0}}' > final-stats.json
+            fi
             COMPLETED=$(cat final-stats.json | jq -r '.translationStatus | map(select(.exists)) | length // 0')
             TOTAL=$(cat final-stats.json | jq -r '.translationStatus | length // 19')
             QUOTA=$(cat final-stats.json | jq -r '.deeplUsage.percentage // 0')
