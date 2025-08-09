@@ -5,6 +5,13 @@ import { z } from 'zod';
 import { Octokit } from '@octokit/rest';
 import { createClient, type SanityClient } from '@sanity/client';
 
+// Ensure we can read the raw request body for HMAC verification
+export const config = {
+  api: {
+    bodyParser: false,
+  },
+};
+
 /**
  * Sanity article type (simplified for webhook needs)
  */
@@ -75,7 +82,7 @@ const GitHubDispatchPayloadSchema = z.object({
 });
 
 // Global instances for reuse
-let config: z.infer<typeof EnvSchema>;
+let appEnv: z.infer<typeof EnvSchema>;
 let octokit: Octokit;
 let sanityClient: SanityClient;
 
@@ -122,18 +129,18 @@ async function getRawBody(req: VercelRequest): Promise<Buffer> {
  * Initialize configuration and clients
  */
 function initializeServices() {
-  if (!config) {
-    config = EnvSchema.parse(process.env);
-    
+  if (!appEnv) {
+    appEnv = EnvSchema.parse(process.env);
+
     octokit = new Octokit({
-      auth: config.GITHUB_TOKEN,
+      auth: appEnv.GITHUB_TOKEN,
     });
 
     sanityClient = createClient({
-      projectId: config.SANITY_PROJECT_ID,
-      dataset: config.SANITY_DATASET,
-      token: config.SANITY_TOKEN,
-      apiVersion: config.SANITY_API_VERSION,
+      projectId: appEnv.SANITY_PROJECT_ID,
+      dataset: appEnv.SANITY_DATASET,
+      token: appEnv.SANITY_TOKEN,
+      apiVersion: appEnv.SANITY_API_VERSION,
       useCdn: false, // We need fresh data for webhooks
     });
   }
@@ -144,7 +151,7 @@ function initializeServices() {
  */
 function verifyWebhookSignature(body: Buffer, signature: string): boolean {
   const expectedSignature = crypto
-    .createHmac('sha256', config.SANITY_WEBHOOK_SECRET)
+    .createHmac('sha256', appEnv.SANITY_WEBHOOK_SECRET)
     .update(body)
     .digest('hex');
 
@@ -304,7 +311,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // Temporary: debug endpoint to compare signature against server-side secret
     if (method === 'POST' && url === '/webhook/debug-signature') {
-      if (config.DEBUG_SIGNATURE !== 'true') {
+      if (appEnv.DEBUG_SIGNATURE !== 'true') {
         return res.status(404).json({ error: 'Not found' });
       }
       const provided = getHeader(req, ['x-debug-compare-signature']);
@@ -313,7 +320,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
       const bodyBuffer = await getRawBody(req);
       const expected = 'sha256=' + crypto
-        .createHmac('sha256', config.SANITY_WEBHOOK_SECRET)
+        .createHmac('sha256', appEnv.SANITY_WEBHOOK_SECRET)
         .update(bodyBuffer)
         .digest('hex');
       const match = provided === expected;
@@ -373,8 +380,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         });
       }
 
-      // Parse payload
-      const rawPayload = typeof (req as any).body === 'string' ? JSON.parse((req as any).body) : (req as any).body;
+      // Parse payload using the same raw buffer used for signature verification
+      const rawPayload = JSON.parse(bodyBuffer.toString('utf8'));
       const payload = SanityWebhookPayloadSchema.parse(rawPayload);
 
       console.log('Webhook received', {
@@ -417,15 +424,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
 
       await octokit.repos.createDispatchEvent({
-        owner: config.GITHUB_OWNER,
-        repo: config.GITHUB_REPO,
+        owner: appEnv.GITHUB_OWNER,
+        repo: appEnv.GITHUB_REPO,
         ...dispatchPayload,
       });
 
       console.log('GitHub workflow dispatched', {
         documentId: payload._id,
-        owner: config.GITHUB_OWNER,
-        repo: config.GITHUB_REPO,
+        owner: appEnv.GITHUB_OWNER,
+        repo: appEnv.GITHUB_REPO,
       });
 
       return res.json({
@@ -454,8 +461,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       if (!dryRun) {
         await octokit.repos.createDispatchEvent({
-          owner: config.GITHUB_OWNER,
-          repo: config.GITHUB_REPO,
+          owner: appEnv.GITHUB_OWNER,
+          repo: appEnv.GITHUB_REPO,
           ...dispatchPayload,
         });
       }
