@@ -39,6 +39,10 @@ jobs:
             echo "Ignoring repository_dispatch action ${{ github.event.action }} (expecting sanity_article_ja)"
             exit 0
           fi
+      - name: Resolve document id
+        run: |
+          echo "DOC_ID=${{ github.event_name == 'workflow_dispatch' && github.event.inputs.document_id || github.event.client_payload.documentId }}" >> "$GITHUB_ENV"
+          echo "Resolved document id: $DOC_ID"
       - name: Checkout repository
         uses: actions/checkout@v4
 
