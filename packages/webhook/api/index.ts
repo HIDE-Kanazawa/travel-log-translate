@@ -33,6 +33,7 @@ const EnvSchema = z.object({
   GITHUB_OWNER: z.string().min(1),
   GITHUB_REPO: z.string().min(1),
   NODE_ENV: z.string().default('development'),
+  DEBUG_SIGNATURE: z.string().optional(),
   // Sanity connection details
   SANITY_PROJECT_ID: z.string().min(1),
   SANITY_DATASET: z.string().min(1),
@@ -298,6 +299,29 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         status: 'healthy',
         timestamp: new Date().toISOString(),
         version: '0.1.0',
+      });
+    }
+
+    // Temporary: debug endpoint to compare signature against server-side secret
+    if (method === 'POST' && url === '/webhook/debug-signature') {
+      if (config.DEBUG_SIGNATURE !== 'true') {
+        return res.status(404).json({ error: 'Not found' });
+      }
+      const provided = getHeader(req, ['x-debug-compare-signature']);
+      if (!provided) {
+        return res.status(400).json({ error: 'Missing X-Debug-Compare-Signature header' });
+      }
+      const bodyBuffer = await getRawBody(req);
+      const expected = 'sha256=' + crypto
+        .createHmac('sha256', config.SANITY_WEBHOOK_SECRET)
+        .update(bodyBuffer)
+        .digest('hex');
+      const match = provided === expected;
+      return res.json({
+        match,
+        providedLength: provided.length,
+        expectedLength: expected.length,
+        expectedPreview: expected.slice(0, 12) + '...' + expected.slice(-4),
       });
     }
 
