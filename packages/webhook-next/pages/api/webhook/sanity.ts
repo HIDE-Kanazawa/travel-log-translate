@@ -74,6 +74,18 @@ function getHeader(req: NextApiRequest, names: string[]): string | undefined {
   return undefined;
 }
 
+function getHeaderWithName(
+  req: NextApiRequest,
+  names: string[],
+): { name: string; value: string } | undefined {
+  for (const name of names) {
+    const v = req.headers[name.toLowerCase() as keyof typeof req.headers];
+    if (typeof v === 'string' && v.length > 0) return { name, value: v };
+    if (Array.isArray(v) && v.length > 0) return { name, value: v[0] };
+  }
+  return undefined;
+}
+
 async function readRawBody(req: NextApiRequest): Promise<Buffer> {
   // With bodyParser disabled, req is a stream
   const chunks: Buffer[] = [];
@@ -112,6 +124,22 @@ function verifySignature(body: Buffer, sig: string): boolean {
   const lowercaseReceived = received.startsWith(prefix)
     ? prefix + received.slice(prefix.length).toLowerCase()
     : received.toLowerCase();
+
+  // Optional diagnostics (no secrets)
+  if (appEnv.DEBUG_SIGNATURE === 'true') {
+    try {
+      console.log('Signature diagnostics', {
+        receivedLen: received.length,
+        hasPrefix: received.startsWith(prefix),
+        looksHex: /^[a-f0-9]+$/i.test(received.replace(/^sha256=/, '')),
+        looksBase64: /^(sha256=)?[A-Za-z0-9+/=]+$/.test(received),
+        looksBase64url: /^(sha256=)?[A-Za-z0-9_-]+$/.test(received),
+        expectedHexLen: expectedHex.length,
+        expectedB64Len: expectedB64.length,
+        expectedB64urlLen: expectedB64url.length,
+      });
+    } catch {}
+  }
   for (const cand of candidates) {
     if (timingSafeEqStr(received, cand)) return true;
     const isHexCand = cand.length === 64 || cand.length === 71;
@@ -147,15 +175,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   // Signature header
-  const signature = getHeader(req, [
+  const sigHeader = getHeaderWithName(req, [
     'sanity-webhook-signature',
     'x-sanity-webhook-signature',
     'x-sanity-signature',
   ]);
-  if (!signature) {
+  if (!sigHeader) {
     console.warn('Missing webhook signature', { ua: req.headers['user-agent'] });
     return res.status(401).json({ error: 'Missing signature' });
   }
+  const signature = sigHeader.value;
 
   // Raw body
   const bodyBuffer = await readRawBody(req);
@@ -170,6 +199,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   } catch {}
 
   if (!verifySignature(bodyBuffer, signature)) {
+    if (appEnv.DEBUG_SIGNATURE === 'true') {
+      try {
+        console.warn('Invalid webhook signature (diagnostics)', {
+          headerUsed: sigHeader.name,
+          sigLen: signature.length,
+          startsWithSha256: signature.startsWith('sha256='),
+          contentType: req.headers['content-type'],
+        });
+      } catch {}
+    }
     console.warn('Invalid webhook signature', { hasSignature: true, ua: req.headers['user-agent'] });
     return res.status(401).json({ error: 'Invalid signature' });
   }
