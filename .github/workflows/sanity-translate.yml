@@ -1,7 +1,7 @@
 name: Sanity Article Translation
 
 on:
-  repository_dispatch:
+  repository_dispatch: {}
   workflow_dispatch:
     inputs:
       document_id:
