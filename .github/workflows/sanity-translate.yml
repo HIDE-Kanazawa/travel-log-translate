@@ -94,6 +94,28 @@ jobs:
             fi
           fi
 
+      - name: Post-translation stats and summary
+        env:
+          DEEPL_API_KEY: ${{ secrets.DEEPL_API_KEY }}
+          SANITY_PROJECT_ID: ${{ secrets.SANITY_PROJECT_ID }}
+          SANITY_DATASET: ${{ secrets.SANITY_DATASET }}
+          SANITY_TOKEN: ${{ secrets.SANITY_TOKEN }}
+        run: |
+          set -euo pipefail
+          echo "📈 Collecting post-translation stats..."
+          pnpm sanity-translate stats "${{ steps.extract-params.outputs.DOCUMENT_ID }}" --json > post-stats.json 2>/dev/null || true
+          echo "📦 post-stats.json:" && sed -n '1,120p' post-stats.json || true
+          # Try parse pt-br existence
+          exists=$(jq -r 'try .translationStatus[] | select(.language=="pt-br") | .exists | tostring' post-stats.json 2>/dev/null | tail -n 1 || true)
+          if [ -z "$exists" ]; then exists="unknown"; fi
+          {
+            echo "# Translation Summary";
+            echo "- Document: ${{ steps.extract-params.outputs.DOCUMENT_ID }}";
+            echo "- Target: pt-br";
+            echo "- Exists after run: ${exists}";
+            echo "- Project/Dataset: ${SANITY_PROJECT_ID}/${SANITY_DATASET}";
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Validate document ID
         run: |
           if [ -z "${{ steps.extract-params.outputs.DOCUMENT_ID }}" ]; then
@@ -126,6 +148,31 @@ PY
           echo "🌐 HTTP ${http_code}"
           echo "📦 Query result (first 200 lines):"
           sed -n '1,200p' sanity-query.json || true
+
+      - name: Assert Sanity project/dataset
+        env:
+          SANITY_PROJECT_ID: ${{ secrets.SANITY_PROJECT_ID }}
+          SANITY_DATASET: ${{ secrets.SANITY_DATASET }}
+        run: |
+          set -euo pipefail
+          echo "🔒 Asserting Sanity target matches expected..."
+          if [ "${SANITY_PROJECT_ID}" != "fcz6on8p" ] || [ "${SANITY_DATASET}" != "production" ]; then
+            echo "❌ Mismatch: expected project=fcz6on8p,dataset=production but got project=${SANITY_PROJECT_ID},dataset=${SANITY_DATASET}"
+            exit 2
+          fi
+          echo "✅ Sanity target verified: ${SANITY_PROJECT_ID}/${SANITY_DATASET}"
+
+      - name: Pre-translation connectivity check (stats JSON)
+        env:
+          DEEPL_API_KEY: ${{ secrets.DEEPL_API_KEY }}
+          SANITY_PROJECT_ID: ${{ secrets.SANITY_PROJECT_ID }}
+          SANITY_DATASET: ${{ secrets.SANITY_DATASET }}
+          SANITY_TOKEN: ${{ secrets.SANITY_TOKEN }}
+        run: |
+          set -euo pipefail
+          echo "🔍 Running stats --json for connectivity check..."
+          pnpm sanity-translate stats "${{ steps.extract-params.outputs.DOCUMENT_ID }}" --json 2>&1 | tee pre-stats.json
+          echo "📊 Pre-stats (first 80 lines):" && sed -n '1,80p' pre-stats.json || true
 
       - name: Check DeepL quota before translation
         env:
@@ -191,21 +238,27 @@ PY
           SANITY_TOKEN: ${{ secrets.SANITY_TOKEN }}
         run: |
           echo "🌍 Starting translation process..."
-          
+          set -euo pipefail
+
           # Run translation with JSON output for structured logging
           pnpm sanity-translate "${{ steps.extract-params.outputs.DOCUMENT_ID }}" \
             ${{ steps.extract-params.outputs.FORCE_FLAG }} \
             ${{ steps.extract-params.outputs.DRY_RUN_FLAG }} \
+            --languages pt-br \
             --json \
             --max-chars 450000 \
             2>&1 | tee translation-log.json
-          
-          # Check if translation was successful
-          if [ $? -eq 0 ]; then
+
+          # Get exit code of pnpm command in the pipeline
+          CLI_STATUS=${PIPESTATUS[0]}
+          if [ "$CLI_STATUS" -eq 0 ]; then
             echo "✅ Translation completed successfully"
           else
-            echo "❌ Translation failed with exit code $?"
-            exit $?
+            echo "❌ Translation failed with exit code ${CLI_STATUS}"
+            # Show tail of log for quick context
+            echo "--- translation-log (tail) ---"
+            tail -100 translation-log.json || true
+            exit "$CLI_STATUS"
           fi
 
       - name: Post-translation validation
