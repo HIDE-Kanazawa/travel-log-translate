@@ -43,8 +43,12 @@ describe('TranslationEngine', () => {
       },
     ],
     lang: 'ja',
+    publishedAt: '2025-01-20T10:00:00.000Z',
+    type: 'spot',
+    prefecture: '東京都',
     tags: ['テスト', 'サンプル'],
-  };
+    placeName: '渋谷スクランブル交差点',
+  };;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -87,7 +91,8 @@ describe('TranslationEngine', () => {
         .mockResolvedValueOnce({
           translations: [
             'Test Article Title',
-            'This is a test article summary.',
+            'test-article',
+            'Shibuya Scramble Crossing',
             'test',
             'sample',
             'This is English test content.',
@@ -98,7 +103,8 @@ describe('TranslationEngine', () => {
         .mockResolvedValueOnce({
           translations: [
             'Titre d\'article de test',
-            'Ceci est un résumé d\'article de test.',
+            'article-de-test',
+            'Carrefour de Shibuya Scramble',
             'test',
             'échantillon',
             'Ceci est le contenu de test français.',
@@ -150,7 +156,7 @@ describe('TranslationEngine', () => {
       ]);
 
       mockDeepL.translateBatch.mockResolvedValue({
-        translations: ['French Title', 'French excerpt', 'french', 'sample', 'French content'],
+        translations: ['French Title', 'titre-francais', 'Place Name en Français', 'french', 'sample', 'French content'],
         totalCharacters: 72,
         usedCache: false,
       });
@@ -187,7 +193,7 @@ describe('TranslationEngine', () => {
 
       // Dry run should still call translation API for validation
       mockDeepL.translateBatch.mockResolvedValue({
-        translations: ['Test Title', 'Test excerpt', 'test', 'sample', 'Test content'],
+        translations: ['Test Title', 'test-title', 'Test Place Name', 'test', 'sample', 'Test content'],
         totalCharacters: 57,
         usedCache: false,
       });
@@ -249,7 +255,7 @@ describe('TranslationEngine', () => {
       // English translations succeed
       mockDeepL.translateBatch
         .mockResolvedValueOnce({
-          translations: ['Title', 'Excerpt', 'tag1', 'tag2', 'Content'],
+          translations: ['Title', 'title', 'Place Name', 'tag1', 'tag2', 'Content'],
           totalCharacters: 27,
           usedCache: false,
         })

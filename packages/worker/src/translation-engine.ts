@@ -7,6 +7,7 @@ import {
   validatePortableTextStructure,
   sanitizePortableTextBlocks,
   summarizePortableTextContent,
+  convertToSlug,
   SanityArticle,
   TargetLanguage,
   TARGET_LANGUAGES,
@@ -330,7 +331,8 @@ export class TranslationEngine {
     const extractedTexts = extractTextsFromPortableText(sanitizedContent);
     const textsToTranslate = [
       sourceDocument.title,
-
+      sourceDocument.slug.current, // Add slug for translation
+      ...(sourceDocument.placeName ? [sourceDocument.placeName] : []),
       ...(sourceDocument.tags || []),
       ...extractedTexts.map(t => t.text),
     ].filter(text => text.trim().length > 0);
@@ -340,7 +342,12 @@ export class TranslationEngine {
 
     let translationIndex = 0;
     const translatedTitle = translationResult.translations[translationIndex++];
+    const translatedSlugText = translationResult.translations[translationIndex++];
 
+    // Get translated placeName if it exists
+    const translatedPlaceName = sourceDocument.placeName 
+      ? translationResult.translations[translationIndex++]
+      : undefined;
 
     const translatedTags = sourceDocument.tags
       ? translationResult.translations.slice(
@@ -377,15 +384,13 @@ export class TranslationEngine {
       title: translatedTitle,
       slug: {
         _type: 'slug',
-        current:
-        typeof (this.sanityClient as any).generateTranslatedSlug === 'function'
-          ? (this.sanityClient as any).generateTranslatedSlug(sourceDocument.slug.current, language)
-          : `${sourceDocument.slug.current}-${language}`,
+        current: `${convertToSlug(translatedSlugText)}-${language}`,
       },
 
       content: translatedContent,
       lang: language,
       prefecture: prefectureInJapanese,
+      placeName: translatedPlaceName,
       translationOf: {
         _type: 'reference',
         _ref: sourceDocument._id,

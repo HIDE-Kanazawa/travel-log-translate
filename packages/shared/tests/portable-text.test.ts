@@ -10,6 +10,7 @@ import {
   validatePortableTextStructure,
   sanitizePortableTextBlocks,
   summarizePortableTextContent,
+  convertToSlug,
 } from '../src/portable-text';
 
 describe('Portable Text Utils', () => {
@@ -332,6 +333,45 @@ describe('Portable Text Utils', () => {
       expect(summary.codeBlocks).toBe(0);
       expect(summary.totalCharacters).toBe(0);
       expect(summary.estimatedApiCost).toBe(0);
+    });
+  });
+
+  describe('convertToSlug', () => {
+    it('should convert Japanese text to URL-friendly slug', () => {
+      expect(convertToSlug('東京グルメ ラーメン')).toBe('東京グルメ-ラーメン');
+      expect(convertToSlug('【金沢グルメ】昔ながらの洋食店でいただくハントンライス')).toBe('金沢グルメ昔ながらの洋食店でいただくハントンライス');
+    });
+
+    it('should handle English text with special characters', () => {
+      expect(convertToSlug('Best Café & Restaurant!')).toBe('best-cafe-restaurant');
+      expect(convertToSlug('New York\'s Amazing Food')).toBe('new-yorks-amazing-food');
+    });
+
+    it('should handle accented characters', () => {
+      expect(convertToSlug('Café français')).toBe('cafe-francais');
+      expect(convertToSlug('España & Portugal')).toBe('espana-portugal');
+    });
+
+    it('should remove multiple spaces and special characters', () => {
+      expect(convertToSlug('  Multiple   Spaces   Here  ')).toBe('multiple-spaces-here');
+      expect(convertToSlug('Special@#$%Characters*&')).toBe('specialcharacters');
+    });
+
+    it('should limit length to 50 characters', () => {
+      const longText = 'This is a very long text that should be truncated to fifty characters maximum';
+      const result = convertToSlug(longText);
+      expect(result.length).toBeLessThanOrEqual(50);
+      expect(result).toBe('this-is-a-very-long-text-that-should-be-truncated');
+    });
+
+    it('should handle empty and whitespace-only input', () => {
+      expect(convertToSlug('')).toBe('');
+      expect(convertToSlug('   ')).toBe('');
+      expect(convertToSlug('---')).toBe('');
+    });
+
+    it('should remove consecutive hyphens', () => {
+      expect(convertToSlug('Test--Multiple---Hyphens')).toBe('test-multiple-hyphens');
     });
   });
 });

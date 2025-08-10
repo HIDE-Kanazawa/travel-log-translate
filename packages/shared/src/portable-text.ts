@@ -28,6 +28,32 @@ export function extractTextsFromPortableText(blocks: PortableTextBlock[]): Extra
 }
 
 /**
+ * Convert translated text to URL-friendly slug format
+ */
+export function convertToSlug(text: string): string {
+  return text
+    .toLowerCase()
+    .trim()
+    // Replace spaces and special characters with hyphens
+    .replace(/[\s\-_]+/g, '-')
+    // Remove brackets and special characters
+    .replace(/[【】\[\]()（）]/g, '')
+    // Normalize accented characters to their base form
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    // Remove special characters and keep only alphanumeric, hyphens, and Unicode letters
+    .replace(/[^a-z0-9\-\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF\u3400-\u4DBF]/g, '')
+    // Remove multiple consecutive hyphens
+    .replace(/-+/g, '-')
+    // Remove leading/trailing hyphens
+    .replace(/^-+|-+$/g, '')
+    // Limit length to 50 characters for SEO
+    .substring(0, 50)
+    // Remove trailing hyphen if truncated
+    .replace(/-+$/, '');
+}
+
+/**
  * Inject translated texts back into Portable Text blocks
  */
 export function injectTextsIntoPortableText(
