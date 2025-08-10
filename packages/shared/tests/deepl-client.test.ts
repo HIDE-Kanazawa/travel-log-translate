@@ -316,10 +316,10 @@ describe('DeepLClient', () => {
       mockTranslator.translateText.mockResolvedValue({ text: '你好' });
 
       await client.translateText('こんにちは', 'zh-cn');
-      expect(mockTranslator.translateText).toHaveBeenCalledWith('こんにちは', 'ja', 'ZH');
+      expect(mockTranslator.translateText).toHaveBeenCalledWith('こんにちは', 'ja', 'ZH-HANS');
 
       await client.translateText('こんにちは', 'zh-tw');
-      expect(mockTranslator.translateText).toHaveBeenCalledWith('こんにちは', 'ja', 'ZH');
+      expect(mockTranslator.translateText).toHaveBeenCalledWith('こんにちは', 'ja', 'ZH-HANT');
     });
 
     it('should throw error for unsupported language', async () => {

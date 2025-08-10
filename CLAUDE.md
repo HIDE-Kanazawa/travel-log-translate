@@ -1,6 +1,6 @@
 # CLAUDE.md – Travel-Log Translation Automation Project
 > Guidance for Claude Code working on the **Travel-Log Smart Translation Pipeline**  
-> Last update : 2025-08-05 (v0.2.0-expanded-workflow)
+> Last update : 2025-08-10 (v0.2.3-20languages-support)
 
 ---
 
@@ -22,7 +22,7 @@
 | **Output** | Sanity CMS多言語記事 + Vercel自動デプロイ |
 | **Stack** | Node 20, TypeScript, Sanity CMS, DeepL API, GitHub Actions, Vercel |
 | **Hosting** | Sanity (ヘッドレスCMS) + Vercel (ホスティング) |
-| **Target Langs (19)** | en, zh-cn, zh-tw, ko, fr, de, es, it, pt, ru, ar, hi, id, ms, th, vi, tl, tr, br |
+| **Target Langs (19)** | en, es, fr, de, it, pt-br, ru, ko, zh-cn, zh-tw, ar, tr, th, nl, pl, sv, da, fi, id |
 
 ---
 
@@ -280,7 +280,7 @@ my-sanity-site/
 - **必須フィールド**: title, lang, slug, content, publishedAt, type, prefecture
 - **オプションフィールド**: tags, placeName, translationOf
 - **削除対象**: excerpt, featured, author
-- **多言語対応**: 19言語 + 国際化プラグイン
+- **多言語対応**: 19翻訳言語 + 日本語（原文）= 20言語対応
 
 ### **開発フロー**
 1. **my-sanity-site**: Sanityスキーマ更新・デプロイ
@@ -294,10 +294,47 @@ my-sanity-site/
 
 ---
 
+## 10. Language Support Policy (2025-08-10)
+
+### **20言語対応方針**
+ブログの「20ヶ国語対応」は以下の構成で実現：
+
+| 言語種別 | 言語数 | 詳細 |
+|----------|--------|------|
+| **日本語（原文）** | 1言語 | コンテンツ制作言語 |
+| **翻訳対象言語** | 19言語 | DeepL APIで自動翻訳 |
+| **合計** | **20言語** | ブログアピールポイント |
+
+### **DeepL API対応言語選定基準**
+2025年8月時点で、DeepL APIは34言語をサポート。この中から以下の基準で上位19言語を選定：
+
+1. **使用人口の多さ**（英語、中国語、スペイン語等）
+2. **経済圏の重要性**（ドイツ語、フランス語、イタリア語等）
+3. **旅行市場の活発度**（韓国語、アラビア語、ロシア語等）
+4. **技術的安定性**（DeepL APIでのサポート品質）
+
+### **非対応言語とその理由**
+- **hi**（ヒンディー語）：DeepL未対応
+- **ms**（マレー語）：DeepL未対応  
+- **tl**（タガログ語）：DeepL未対応
+- **vi**（ベトナム語）：DeepL未対応
+- **no**（ノルウェー語）：タイ語優先のため除外（20言語枠調整）
+
+### **最終選定言語リスト**
+```typescript
+// 19翻訳対象言語（タイ語含む）
+'en', 'es', 'fr', 'de', 'it', 'pt-br', 'ru', 'ko', 
+'zh-cn', 'zh-tw', 'ar', 'tr', 'th', 'nl', 'pl', 
+'sv', 'da', 'fi', 'id'
+```
+
+---
+
 ## 📝 Change Log
 
 | Date | Version | Summary |
 |------|---------|---------|
+| 2025-08-10 | v0.2.3 | 20言語対応（DeepL APIサポート言語に基づく最適化 + タイ語含む） + 翻訳エラー修正 |
 | 2025-08-06 | v0.2.2 | Sanityスキーマ同期要件特定 + プロジェクト間依存関係明確化 |
 | 2025-08-06 | v0.2.1 | 多言語記事関連性管理システム + 言語切り替え対応 |
 | 2025-08-05 | v0.2.0 | スマート翻訳パイプライン + 外部AI記事対応 |

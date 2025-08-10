@@ -4,26 +4,26 @@ import { z } from 'zod';
  * Supported target languages (19 languages, excluding Japanese)
  */
 export const TARGET_LANGUAGES = [
-  'en',
-  'zh-cn',
-  'zh-tw',
-  'ko',
-  'fr',
-  'de',
-  'es',
-  'it',
-  'pt',
-  'ru',
-  'ar',
-  'hi',
-  'id',
-  'ms',
-  'th',
-  'vi',
-  'tl',
-  'tr',
-  'pt-br',
-] as const;
+  'en',      // English (American)
+  'es',      // Spanish 
+  'fr',      // French
+  'de',      // German
+  'it',      // Italian
+  'pt-br',   // Portuguese (Brazilian)
+  'ru',      // Russian
+  'ko',      // Korean
+  'zh-cn',   // Chinese (simplified)
+  'zh-tw',   // Chinese (traditional)
+  'ar',      // Arabic
+  'tr',      // Turkish
+  'th',      // Thai
+  'nl',      // Dutch
+  'pl',      // Polish
+  'sv',      // Swedish
+  'da',      // Danish
+  'fi',      // Finnish
+  'id',      // Indonesian
+] as const;;;;;
 
 export type TargetLanguage = (typeof TARGET_LANGUAGES)[number];
 
@@ -32,25 +32,25 @@ export type TargetLanguage = (typeof TARGET_LANGUAGES)[number];
  */
 export const DEEPL_LANGUAGE_MAP: Record<TargetLanguage, string> = {
   en: 'EN-US',
-  'zh-cn': 'ZH',
-  'zh-tw': 'ZH',
-  ko: 'KO',
+  es: 'ES',
   fr: 'FR',
   de: 'DE',
-  es: 'ES',
   it: 'IT',
-  pt: 'PT-BR',
-  ru: 'RU',
-  ar: 'AR',
-  hi: 'HI',
-  id: 'ID',
-  ms: 'MS',
-  th: 'TH',
-  vi: 'VI',
-  tl: 'TL',
-  tr: 'TR',
   'pt-br': 'PT-BR',
-};
+  ru: 'RU',
+  ko: 'KO',
+  'zh-cn': 'ZH-HANS',
+  'zh-tw': 'ZH-HANT',
+  ar: 'AR',
+  tr: 'TR',
+  th: 'TH',
+  nl: 'NL',
+  pl: 'PL',
+  sv: 'SV',
+  da: 'DA',
+  fi: 'FI',
+  id: 'ID',
+};;;;;
 
 /**
  * Portable Text block types

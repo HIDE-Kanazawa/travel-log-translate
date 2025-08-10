@@ -292,8 +292,12 @@ export class SanityPublisher {
       if (!document) return null;
 
       // Get translation status
-      const TARGET_LANGUAGES: any[] = ['en', 'zh-cn', 'zh-tw', 'ko', 'fr', 'de', 'es', 'it', 'pt', 'ru', 'ar', 'hi', 'id', 'ms', 'th', 'vi', 'tl', 'tr', 'pt-br'];
-      const translationStatus = await this.sanityClient.getTranslationStatus(documentId, TARGET_LANGUAGES);
+      const targetLanguages = [
+        'en', 'es', 'fr', 'de', 'it', 'pt-br', 'ru', 'ko', 
+        'zh-cn', 'zh-tw', 'ar', 'tr', 'th', 'nl', 'pl', 
+        'sv', 'da', 'fi', 'id'
+      ];
+      const translationStatus = await this.sanityClient.getTranslationStatus(documentId, targetLanguages as any);
       
       return {
         sanityDocumentId: document._id,

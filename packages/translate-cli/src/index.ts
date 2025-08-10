@@ -7,11 +7,11 @@ import { TranslationService } from './services/translation';
 import { FileProcessor } from './services/file-processor';
 import { Cache } from './services/cache';
 import { Logger } from './utils/logger';
-
 const SUPPORTED_LANGUAGES = [
-  'en', 'zh-cn', 'zh-tw', 'ko', 'fr', 'de', 'es', 'it', 'pt', 'ru',
-  'ar', 'hi', 'id', 'ms', 'th', 'vi', 'tl', 'tr', 'pt-br'
-];
+  'en', 'es', 'fr', 'de', 'it', 'pt-br', 'ru', 'ko', 
+  'zh-cn', 'zh-tw', 'ar', 'tr', 'th', 'nl', 'pl', 
+  'sv', 'da', 'fi', 'id'
+] as const;
 
 const program = new Command();
 
@@ -36,7 +36,7 @@ program
         : options.target.split(',').map((lang: string) => lang.trim());
 
       // Validate target languages
-      const invalidLanguages = targetLanguages.filter((lang: string) => !SUPPORTED_LANGUAGES.includes(lang));
+      const invalidLanguages = targetLanguages.filter((lang: string) => !SUPPORTED_LANGUAGES.includes(lang as any));
       if (invalidLanguages.length > 0) {
         logger.error('Invalid target languages', { invalidLanguages, supported: SUPPORTED_LANGUAGES });
         process.exit(10);

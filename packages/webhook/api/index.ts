@@ -4,6 +4,7 @@ import crypto from 'crypto';
 import { z } from 'zod';
 import { Octokit } from '@octokit/rest';
 import { createClient, type SanityClient } from '@sanity/client';
+import { TARGET_LANGUAGES, type TargetLanguage } from '../../shared/src/types.js';
 
 // Ensure we can read the raw request body for HMAC verification
 export const config = {
@@ -26,10 +27,6 @@ interface SanityArticle {
   }>;
 }
 
-/**
- * Target languages for translation
- */
-type TargetLanguage = 'en' | 'zh-cn' | 'zh-tw' | 'ko' | 'fr' | 'de' | 'es' | 'it' | 'pt' | 'ru' | 'ar' | 'hi' | 'id' | 'ms' | 'th' | 'vi' | 'tl' | 'tr' | 'pt-br';
 
 /**
  * Environment configuration schema
@@ -277,7 +274,7 @@ async function shouldTriggerTranslation(documentId: string): Promise<{
     }
 
     // Check translation status for all target languages
-    const targetLanguages: TargetLanguage[] = ['en', 'zh-cn', 'zh-tw', 'ko', 'fr', 'de', 'es', 'it', 'pt', 'ru', 'ar', 'hi', 'id', 'ms', 'th', 'vi', 'tl', 'tr', 'pt-br'];
+    const targetLanguages: TargetLanguage[] = TARGET_LANGUAGES;
     const translationStatus = await getTranslationStatus(documentId, targetLanguages);
     
     // Check if all translations already exist

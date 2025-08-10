@@ -69,7 +69,10 @@
       "mcp__serena__think_about_task_adherence",
       "WebFetch(domain:www.sanity.io)",
       "mcp__serena__read_memory",
-      "WebFetch(domain:docs.vercel.com)"
+      "WebFetch(domain:docs.vercel.com)",
+      "WebFetch(domain:www.deepl.com)",
+      "WebFetch(domain:developers.deepl.com)",
+      "mcp__serena__think_about_whether_you_are_done"
     ],
     "deny": []
   }

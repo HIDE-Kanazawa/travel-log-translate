@@ -264,7 +264,11 @@ export class ContentPublisher {
       }
 
       // Check translation status for all target languages
-      const targetLanguages = ['en', 'zh-cn', 'zh-tw', 'ko', 'fr', 'de', 'es', 'it', 'pt', 'ru', 'ar', 'hi', 'id', 'ms', 'th', 'vi', 'tl', 'tr', 'pt-br'];
+      const targetLanguages = [
+        'en', 'es', 'fr', 'de', 'it', 'pt-br', 'ru', 'ko', 
+        'zh-cn', 'zh-tw', 'ar', 'tr', 'th', 'nl', 'pl', 
+        'sv', 'da', 'fi', 'id'
+      ];
       const translationStatus = await this.sanityPublisher.sanityClient.getTranslationStatus(documentId, targetLanguages as any);
       
       // Check if all translations already exist

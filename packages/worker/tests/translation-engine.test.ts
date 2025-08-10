@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { TranslationEngine } from '../src/translation-engine';
 import { DeepLClient } from 'shared/src/deepl-client';
 import { SanityArticleClient } from 'shared/src/sanity-client';
+import { TARGET_LANGUAGES } from 'shared/src/types';
 import type { SanityArticle, TargetLanguage } from 'shared/src/types';
 
 // Mock shared modules
@@ -288,10 +289,7 @@ describe('TranslationEngine', () => {
       mockSanity.getArticle.mockResolvedValue(mockArticle);
       
       // Return status for all 19 target languages  
-      const allLanguageStatus = [
-        'en', 'zh-cn', 'zh-tw', 'ko', 'fr', 'de', 'es', 'it', 'pt', 'ru',
-        'ar', 'hi', 'id', 'ms', 'th', 'vi', 'tl', 'tr', 'pt-br'
-      ].map(lang => ({
+      const allLanguageStatus = TARGET_LANGUAGES.map(lang => ({
         language: lang,
         exists: lang === 'en', // Only English exists
         documentId: `article-123-${lang}`

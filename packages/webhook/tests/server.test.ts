@@ -2,6 +2,11 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import request from 'supertest';
 import crypto from 'crypto';
 import WebhookServer from '../src/server';
+const TARGET_LANGUAGES = [
+  'en', 'es', 'fr', 'de', 'it', 'pt-br', 'ru', 'ko', 
+  'zh-cn', 'zh-tw', 'ar', 'tr', 'th', 'nl', 'pl', 
+  'sv', 'da', 'fi', 'id'
+] as const;
 
 // Mock @octokit/rest
 const mockOctokit = {
@@ -461,7 +466,7 @@ describe('WebhookServer', () => {
       expect(mockSanityClient.getArticle).toHaveBeenCalledWith('article-smart-123');
       expect(mockSanityClient.getTranslationStatus).toHaveBeenCalledWith(
         'article-smart-123',
-        expect.arrayContaining(['en', 'fr', 'de', 'es', 'it', 'pt', 'ru', 'ar', 'hi', 'id', 'ms', 'th', 'vi', 'tl', 'tr', 'pt-br', 'zh-cn', 'zh-tw', 'ko'])
+        expect.arrayContaining(TARGET_LANGUAGES)
       );
 
       expect(mockOctokit.repos.createDispatchEvent).toHaveBeenCalledWith({
@@ -575,10 +580,7 @@ describe('WebhookServer', () => {
       });
 
       // Mock all translations as existing
-      const allTranslationsExist = [
-        'en', 'zh-cn', 'zh-tw', 'ko', 'fr', 'de', 'es', 'it', 'pt', 'ru', 
-        'ar', 'hi', 'id', 'ms', 'th', 'vi', 'tl', 'tr', 'pt-br'
-      ].map(lang => ({ language: lang, exists: true }));
+      const allTranslationsExist = TARGET_LANGUAGES.map(lang => ({ language: lang, exists: true }));
 
       mockSanityClient.getTranslationStatus.mockResolvedValue(allTranslationsExist);
 
