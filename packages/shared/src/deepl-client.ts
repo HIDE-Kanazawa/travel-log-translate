@@ -4,6 +4,17 @@ import path from 'path';
 import crypto from 'crypto';
 import { TargetLanguage, DEEPL_LANGUAGE_MAP, TranslationCacheEntry, DeepLUsage } from './types.js';
 
+export interface DeepLClientOptions {
+  /** Minimum interval between API requests in milliseconds */
+  minRequestIntervalMs?: number;
+  /** Max retry attempts on failure */
+  maxRetries?: number;
+  /** Initial backoff delay in milliseconds */
+  initialDelayMs?: number;
+  /** Per-attempt maximum backoff delay cap in milliseconds */
+  maxDelayMs?: number;
+}
+
 /**
  * DeepL client wrapper with caching and rate limiting
  */
@@ -12,11 +23,19 @@ export class DeepLClient {
   private cache: Map<string, TranslationCacheEntry> = new Map();
   private cachePath: string;
   private lastRequestTime = 0;
-  private readonly MIN_REQUEST_INTERVAL = 300; // ~3 req/sec; be conservative for CI
+  // Configurable timings (defaults are conservative for CI)
+  private readonly minRequestIntervalMs: number;
+  private readonly maxRetries: number;
+  private readonly initialDelayMs: number;
+  private readonly maxDelayMs: number;
 
-  constructor(apiKey: string, cacheDir = '.deepl-cache') {
+  constructor(apiKey: string, cacheDir = '.deepl-cache', options: DeepLClientOptions = {}) {
     this.translator = new deepl.Translator(apiKey);
     this.cachePath = path.resolve(cacheDir, 'translations.json');
+    this.minRequestIntervalMs = options.minRequestIntervalMs ?? 300; // ~3 req/sec
+    this.maxRetries = options.maxRetries ?? 5;
+    this.initialDelayMs = options.initialDelayMs ?? 1000;
+    this.maxDelayMs = options.maxDelayMs ?? 4000;
   }
 
   /**
@@ -96,8 +115,8 @@ export class DeepLClient {
     const now = Date.now();
     const elapsed = now - this.lastRequestTime;
 
-    if (elapsed < this.MIN_REQUEST_INTERVAL) {
-      await new Promise(resolve => setTimeout(resolve, this.MIN_REQUEST_INTERVAL - elapsed));
+    if (elapsed < this.minRequestIntervalMs) {
+      await new Promise(resolve => setTimeout(resolve, this.minRequestIntervalMs - elapsed));
     }
 
     this.lastRequestTime = Date.now();
@@ -106,31 +125,26 @@ export class DeepLClient {
   /**
    * Retry with exponential backoff
    */
-  private async retryWithBackoff<T>(
-    operation: () => Promise<T>,
-    maxRetries = 5,
-    initialDelay = 1000
-  ): Promise<T> {
+  private async retryWithBackoff<T>(operation: () => Promise<T>): Promise<T> {
     let lastError: Error;
 
-    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    for (let attempt = 0; attempt <= this.maxRetries; attempt++) {
       try {
         return await operation();
       } catch (error) {
         lastError = error as Error;
 
-        if (attempt === maxRetries) break;
+        if (attempt === this.maxRetries) break;
 
         // Base exponential delay with an upper bound to avoid excessive waits in CI
-        let delay = initialDelay * Math.pow(2, attempt);
-        const MAX_DELAY_MS = 4000; // cap per-attempt delay to keep retries within test timeouts
-        if (delay > MAX_DELAY_MS) delay = MAX_DELAY_MS;
+        let delay = this.initialDelayMs * Math.pow(2, attempt);
+        if (delay > this.maxDelayMs) delay = this.maxDelayMs;
 
         // Heavier backoff on 429/TooManyRequests
         const message = (lastError?.message || '').toLowerCase();
         const isTooMany = message.includes('too many requests') || message.includes('429');
         if (isTooMany) {
-          delay = Math.floor(Math.min(MAX_DELAY_MS, delay * 1.5));
+          delay = Math.floor(Math.min(this.maxDelayMs, delay * 1.5));
         }
 
         // Add small jitter to avoid thundering herd

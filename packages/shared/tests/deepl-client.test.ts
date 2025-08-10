@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import fs from 'fs/promises';
-import { DeepLClient } from '../src/deepl-client';
+import { DeepLClient, type DeepLClientOptions } from '../src/deepl-client';
 
 // Mock deepl-node
 const mockTranslator = {
@@ -18,10 +18,16 @@ vi.mock('fs/promises');
 describe('DeepLClient', () => {
   let client: DeepLClient;
   const TEST_CACHE_DIR = './test-deepl-cache';
+  const TEST_OPTIONS: DeepLClientOptions = {
+    minRequestIntervalMs: 0,
+    maxRetries: 3,
+    initialDelayMs: 10,
+    maxDelayMs: 50,
+  };
 
   beforeEach(() => {
     vi.clearAllMocks();
-    client = new DeepLClient('test-api-key', TEST_CACHE_DIR);
+    client = new DeepLClient('test-api-key', TEST_CACHE_DIR, TEST_OPTIONS);
   });
 
   afterEach(() => {
@@ -136,7 +142,7 @@ describe('DeepLClient', () => {
       mockTranslator.translateText.mockRejectedValue(new Error('Persistent API Error'));
 
       await expect(client.translateText('test', 'en')).rejects.toThrow('Persistent API Error');
-      expect(mockTranslator.translateText).toHaveBeenCalledTimes(6); // Initial + 5 retries
+      expect(mockTranslator.translateText).toHaveBeenCalledTimes((TEST_OPTIONS.maxRetries ?? 3) + 1);
     });
   });
 
