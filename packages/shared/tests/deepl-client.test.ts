@@ -136,7 +136,7 @@ describe('DeepLClient', () => {
       mockTranslator.translateText.mockRejectedValue(new Error('Persistent API Error'));
 
       await expect(client.translateText('test', 'en')).rejects.toThrow('Persistent API Error');
-      expect(mockTranslator.translateText).toHaveBeenCalledTimes(4); // Initial + 3 retries
+      expect(mockTranslator.translateText).toHaveBeenCalledTimes(6); // Initial + 5 retries
     });
   });
 
