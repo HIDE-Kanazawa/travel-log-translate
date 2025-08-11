@@ -48,8 +48,12 @@ describe('WebhookServer', () => {
   };;
 
   beforeEach(() => {
-    vi.resetAllMocks();
-    
+    // Reset only mock function states (implementations and calls)
+    mockSanityClient.getArticle.mockReset();
+    mockSanityClient.getTranslationStatus.mockReset();
+    mockSanityClient.getJapaneseArticles.mockReset();
+    mockOctokit.repos.createDispatchEvent.mockReset();
+
     // Mock environment variables
     Object.entries(testEnv).forEach(([key, value]) => {
       process.env[key] = value;
@@ -450,8 +454,11 @@ describe('WebhookServer', () => {
     }
 
     beforeEach(() => {
-      // Reset all mocks including implementations to avoid leakage between tests
-      vi.resetAllMocks();
+      // Reset only specific mock functions to avoid leakage while preserving module mocks
+      mockSanityClient.getArticle.mockReset();
+      mockSanityClient.getTranslationStatus.mockReset();
+      mockSanityClient.getJapaneseArticles.mockReset();
+      mockOctokit.repos.createDispatchEvent.mockReset();
     });
 
     it('should trigger translation for Japanese article with images and missing translations', async () => {
