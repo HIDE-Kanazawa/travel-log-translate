@@ -110,7 +110,7 @@ describe('WebhookServer', () => {
         slug: { current: 'test-article' },
         publishedAt: '2024-01-01T00:00:00Z',
         type: 'spot',
-        prefecture: 'Tokyo',
+        prefecture: 'tokyo',
         content: [
           { _type: 'block', children: [{ text: 'Some text content' }] },
         ],
@@ -214,7 +214,7 @@ describe('WebhookServer', () => {
         ...englishPayload,
         publishedAt: '2024-01-01T00:00:00Z',
         type: 'spot',
-        prefecture: 'Tokyo',
+        prefecture: 'tokyo',
         content: [{ _type: 'block', children: [{ text: 'English content' }] }],
       });
 
@@ -261,7 +261,7 @@ describe('WebhookServer', () => {
         slug: { current: 'test-article' },
         publishedAt: '2024-01-01T00:00:00Z',
         type: 'spot',
-        prefecture: 'Tokyo',
+        prefecture: 'tokyo',
         content: [
           { _type: 'block', children: [{ text: 'Some text content' }] },
         ],
@@ -305,7 +305,7 @@ describe('WebhookServer', () => {
         ...minimalPayload,
         publishedAt: '2024-01-01T00:00:00Z',
         type: 'spot',
-        prefecture: 'Tokyo',
+        prefecture: 'tokyo',
         content: [{ _type: 'block', children: [{ text: 'Minimal content' }] }],
         coverImage: { _type: 'image', asset: { _ref: 'image-minimal' }, alt: 'Minimal image' },
       });
@@ -434,7 +434,7 @@ describe('WebhookServer', () => {
         slug: { current: 'japanese-article-images' },
         publishedAt: '2024-01-01T00:00:00Z',
         type: 'spot',
-        prefecture: 'Tokyo',
+        prefecture: 'tokyo',
         content: [
           { _type: 'block', children: [{ text: 'Some text content' }] },
         ],
@@ -466,7 +466,7 @@ describe('WebhookServer', () => {
       expect(mockSanityClient.getArticle).toHaveBeenCalledWith('article-smart-123');
       expect(mockSanityClient.getTranslationStatus).toHaveBeenCalledWith(
         'article-smart-123',
-        expect.arrayContaining(TARGET_LANGUAGES)
+        expect.arrayContaining([...TARGET_LANGUAGES])
       );
 
       expect(mockOctokit.repos.createDispatchEvent).toHaveBeenCalledWith({
@@ -498,7 +498,7 @@ describe('WebhookServer', () => {
         slug: { current: 'japanese-article-no-images' },
         publishedAt: '2024-01-01T00:00:00Z',
         type: 'spot',
-        prefecture: 'Tokyo',
+        prefecture: 'tokyo',
         content: [
           { _type: 'block', children: [{ text: 'Text only content' }] },
         ],
@@ -538,7 +538,7 @@ describe('WebhookServer', () => {
         slug: { current: 'english-article-images' },
         publishedAt: '2024-01-01T00:00:00Z',
         type: 'spot',
-        prefecture: 'Tokyo',
+        prefecture: 'tokyo',
         content: [
           { _type: 'block', children: [{ text: 'Some text content' }] },
         ],
@@ -572,7 +572,7 @@ describe('WebhookServer', () => {
         slug: { current: 'japanese-article-images' },
         publishedAt: '2024-01-01T00:00:00Z',
         type: 'spot',
-        prefecture: 'Tokyo',
+        prefecture: 'tokyo',
         content: [
           { _type: 'block', children: [{ text: 'Some text content' }] },
         ],
@@ -661,7 +661,7 @@ describe('WebhookServer', () => {
         slug: { current: 'japanese-article-images' },
         publishedAt: '2024-01-01T00:00:00Z',
         type: 'spot',
-        prefecture: 'Tokyo',
+        prefecture: 'tokyo',
         content: [
           { _type: 'block', children: [{ text: 'Some text content' }] },
         ],

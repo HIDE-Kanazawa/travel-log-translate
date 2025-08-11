@@ -1,9 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { TranslationEngine } from '../src/translation-engine';
-import { DeepLClient } from 'shared/src/deepl-client';
-import { SanityArticleClient } from 'shared/src/sanity-client';
 import { TARGET_LANGUAGES } from 'shared/src/types';
-import type { SanityArticle, TargetLanguage } from 'shared/src/types';
+import type { SanityArticle } from 'shared/src/types';
 
 // Mock shared modules
 vi.mock('shared/src/deepl-client');
@@ -14,20 +12,11 @@ describe('TranslationEngine', () => {
   let mockDeepL: any;
   let mockSanity: any;
 
-  const mockConfig = {
-    DEEPL_API_KEY: 'test-deepl-key',
-    SANITY_PROJECT_ID: 'test-project',
-    SANITY_DATASET: 'test-dataset',
-    SANITY_TOKEN: 'test-token',
-    SANITY_API_VERSION: '2024-01-01',
-  };
-
   const mockArticle: SanityArticle = {
     _id: 'article-123',
     _type: 'article',
     title: 'テスト記事のタイトル',
     slug: { _type: 'slug', current: 'test-article' },
-    excerpt: 'これはテスト記事の概要です。',
     content: [
       {
         _type: 'block',
@@ -45,7 +34,7 @@ describe('TranslationEngine', () => {
     lang: 'ja',
     publishedAt: '2025-01-20T10:00:00.000Z',
     type: 'spot',
-    prefecture: '東京都',
+    prefecture: 'tokyo',
     tags: ['テスト', 'サンプル'],
     placeName: '渋谷スクランブル交差点',
   };;

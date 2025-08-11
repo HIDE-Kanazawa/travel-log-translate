@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { MarkdownParser } from '../src/markdown-parser.js';
 import { promises as fs } from 'fs';
 import path from 'path';
@@ -30,7 +30,7 @@ lang: ja
 slug: test-article
 date: '2024-01-15'
 type: spot
-prefecture: "東京都"
+prefecture: "tokyo"
 publishedAt: "2024-01-15T10:00:00.000Z"
 ---
 
@@ -47,7 +47,7 @@ This is the content of the test article.`;
       expect(result.frontMatter.lang).toBe('ja');
       expect(result.frontMatter.slug).toBe('test-article');
       expect(result.frontMatter.type).toBe('spot');
-      expect(result.frontMatter.prefecture).toBe('東京都');
+      expect(result.frontMatter.prefecture).toBe('tokyo');
       expect(result.frontMatter.publishedAt).toBe('2024-01-15T10:00:00.000Z');
       expect(result.content).toBe('# Test Article\n\nThis is the content of the test article.');
       expect(result.originalPath).toBe(testFile);
@@ -79,7 +79,7 @@ lang: ja
 slug: long-article
 date: '2024-01-15'
 type: food
-prefecture: "大阪府"
+prefecture: "osaka"
 publishedAt: "2024-01-15T10:00:00.000Z"
 ---
 
@@ -127,7 +127,7 @@ lang: ja
 slug: valid
 date: '2024-01-15'
 type: transport
-prefecture: "神奈川県"
+prefecture: "kanagawa"
 publishedAt: "2024-01-15T10:00:00.000Z"
 ---
 

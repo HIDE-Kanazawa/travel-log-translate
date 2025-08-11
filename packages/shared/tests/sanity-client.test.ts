@@ -45,7 +45,7 @@ describe('SanityArticleClient', () => {
     lang: 'ja',
     publishedAt: '2025-01-20T10:00:00.000Z',
     type: 'spot',
-    prefecture: '東京都',
+    prefecture: 'tokyo',
     tags: ['テスト', 'サンプル'],
   };
 
@@ -256,7 +256,7 @@ describe('SanityArticleClient', () => {
     it('should fetch Japanese master articles', async () => {
       const mockArticles = [
         mockArticle, 
-        { ...mockArticle, _id: 'article-456', publishedAt: '2025-01-21T10:00:00.000Z', type: 'food', prefecture: '大阪府' }
+        { ...mockArticle, _id: 'article-456', publishedAt: '2025-01-21T10:00:00.000Z', type: 'food', prefecture: 'osaka' }
       ];
       mockClient.fetch.mockResolvedValue(mockArticles);
 
@@ -272,7 +272,7 @@ describe('SanityArticleClient', () => {
       const mixedArticles = [
         mockArticle,
         { _id: 'invalid', invalid: 'structure' }, // Invalid
-        { ...mockArticle, _id: 'article-789', publishedAt: '2025-01-22T10:00:00.000Z', type: 'transport', prefecture: '神奈川県' },
+        { ...mockArticle, _id: 'article-789', publishedAt: '2025-01-22T10:00:00.000Z', type: 'transport', prefecture: 'kanagawa' },
       ];
       mockClient.fetch.mockResolvedValue(mixedArticles);
 

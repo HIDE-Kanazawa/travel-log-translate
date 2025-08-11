@@ -16,6 +16,10 @@ const EnvSchema = z.object({
   GITHUB_TOKEN: z.string().min(1),
   GITHUB_OWNER: z.string().min(1),
   GITHUB_REPO: z.string().min(1),
+  BLOG_GITHUB_OWNER: z.string().optional(),
+  BLOG_GITHUB_REPO: z.string().optional(),
+  BLOG_REVALIDATE_URL: z.string().optional(),
+  BLOG_REVALIDATE_TOKEN: z.string().optional(),
   NODE_ENV: z.string().default('development'),
   // Sanity connection details
   SANITY_PROJECT_ID: z.string().min(1),
@@ -249,6 +253,71 @@ class WebhookServer {
   }
 
   /**
+   * Trigger blog rebuild via GitHub repository_dispatch and optional revalidate HTTP call.
+   * This mirrors the Next.js webhook handler behavior so that production using this server still updates the blog.
+   */
+  private async triggerBlogUpdate(documentId: string, operation?: string): Promise<void> {
+    try {
+      const blogOwner = this.config.BLOG_GITHUB_OWNER || this.config.GITHUB_OWNER;
+      const blogRepo = this.config.BLOG_GITHUB_REPO || this.config.GITHUB_REPO;
+
+      const event_type = 'sanity_content_changed' as const;
+      const payload = {
+        event_type,
+        client_payload: {
+          documentId,
+          operation: operation || 'update',
+          triggeredBy: 'sanity-webhook-node',
+          timestamp: new Date().toISOString(),
+        },
+      } as const;
+
+      const resp = await this.octokit.repos.createDispatchEvent({
+        owner: blogOwner,
+        repo: blogRepo,
+        ...payload,
+      });
+
+      console.log('Blog repository_dispatch sent', {
+        status: resp.status,
+        owner: blogOwner,
+        repo: blogRepo,
+        eventType: event_type,
+        documentId,
+      });
+
+      // Optional blog revalidation
+      if (this.config.BLOG_REVALIDATE_URL && this.config.BLOG_REVALIDATE_TOKEN) {
+        const doFetch = (globalThis as any).fetch as
+          | undefined
+          | ((input: any, init?: any) => Promise<{ status: number }>);
+        if (typeof doFetch === 'function') {
+          try {
+            const r = await doFetch(this.config.BLOG_REVALIDATE_URL, {
+              method: 'POST',
+              headers: { Authorization: `Bearer ${this.config.BLOG_REVALIDATE_TOKEN}` },
+            });
+            console.log('Blog revalidate request sent', { status: r.status });
+          } catch (err) {
+            console.error('Blog revalidate request failed', {
+              message: (err as any)?.message,
+              documentId,
+            });
+          }
+        } else {
+          console.warn('fetch is not available; skipping blog revalidation');
+        }
+      }
+    } catch (err) {
+      console.error('Blog repository_dispatch failed', {
+        status: (err as any)?.status ?? (err as any)?.response?.status,
+        message: (err as any)?.message,
+        documentId,
+      });
+    }
+  }
+
+  /**
    * Setup Express routes
    */
   private setupRoutes(): void {
@@ -285,19 +354,19 @@ class WebhookServer {
           'x-sanity-operation',
           'x-sanity-event',
         ]) as string;
-        
-        // Only process 'update' operations for smart translation
-        if (operation !== 'update') {
-          console.log('Webhook ignored - not an update operation', {
-            operation,
+        const op = operation?.toLowerCase();
+        // Allow both 'update' and 'create' (align with Next.js handler); ignore others
+        if (op && op !== 'update' && op !== 'create') {
+          console.log('Webhook ignored - unsupported operation', {
+            operation: op,
             documentId: this.getHeader(req, [
               'sanity-document-id',
               'x-sanity-document-id',
             ]),
           });
           return res.json({
-            message: 'Webhook ignored - only update operations trigger translation',
-            operation,
+            message: 'Webhook ignored - unsupported operation',
+            operation: op,
           });
         }
 
@@ -323,6 +392,8 @@ class WebhookServer {
         });
 
         if (!triggerCheck.shouldTrigger) {
+          // Even if translation doesn't trigger, notify the blog to rebuild
+          await this.triggerBlogUpdate(payload._id, op);
           return res.json({ 
             message: 'Smart trigger conditions not met',
             reason: triggerCheck.reason,
@@ -355,6 +426,9 @@ class WebhookServer {
           owner: this.config.GITHUB_OWNER,
           repo: this.config.GITHUB_REPO,
         });
+
+        // After dispatching translation, also notify the blog to rebuild
+        await this.triggerBlogUpdate(payload._id, op);
 
         res.json({
           message: 'Translation workflow triggered',
