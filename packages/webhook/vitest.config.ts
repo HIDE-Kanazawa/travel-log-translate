@@ -22,5 +22,18 @@ export default defineConfig({
     },
     testTimeout: 30000,
     environment: 'node',
+    onConsoleLog(log, type) {
+      // Suppress noisy, expected stderr logs from negative-path tests
+      if (type === 'stderr') {
+        const suppressPatterns = [
+          'Invalid webhook signature',
+          'Webhook processing failed',
+          'Manual trigger failed',
+          'Error checking translation trigger conditions',
+        ];
+        if (suppressPatterns.some((p) => log.includes(p))) return false;
+      }
+      return true;
+    },
   },
 });

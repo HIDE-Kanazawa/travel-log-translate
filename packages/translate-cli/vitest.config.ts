@@ -21,5 +21,10 @@ export default defineConfig({
       },
     },
     testTimeout: 30000,
+    onConsoleLog(log) {
+      // Suppress Vite CJS Node API deprecation warning noise in CI
+      if (log.includes("The CJS build of Vite's Node API is deprecated")) return false;
+      return true;
+    },
   },
 });
