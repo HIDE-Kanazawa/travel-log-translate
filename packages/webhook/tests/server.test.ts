@@ -48,7 +48,7 @@ describe('WebhookServer', () => {
   };;
 
   beforeEach(() => {
-    vi.clearAllMocks();
+    vi.resetAllMocks();
     
     // Mock environment variables
     Object.entries(testEnv).forEach(([key, value]) => {
@@ -450,8 +450,8 @@ describe('WebhookServer', () => {
     }
 
     beforeEach(() => {
-      // Reset all mocks
-      vi.clearAllMocks();
+      // Reset all mocks including implementations to avoid leakage between tests
+      vi.resetAllMocks();
     });
 
     it('should trigger translation for Japanese article with images and missing translations', async () => {
