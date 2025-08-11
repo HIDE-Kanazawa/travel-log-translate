@@ -47,6 +47,8 @@ export function convertToSlug(text: string): string {
     .replace(/-+/g, '-')
     // Remove leading/trailing hyphens
     .replace(/^-+|-+$/g, '')
+    // Recompose Unicode to NFC to avoid decomposed forms (e.g., ク + ゙ -> グ)
+    .normalize('NFC')
     // Limit length to 50 characters for SEO
     .substring(0, 50)
     // Remove trailing hyphen if truncated
