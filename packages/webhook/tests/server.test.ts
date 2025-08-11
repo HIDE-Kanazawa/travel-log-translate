@@ -157,7 +157,9 @@ describe('WebhookServer', () => {
       });
     });
 
-    it('should ignore non-update operations (create/delete)', async () => {
+    it('should ignore delete and still trigger blog rebuild on create', async () => {
+      // create: allowed path, but if smart trigger conditions are not met,
+      // server still sends a blog repository_dispatch to rebuild the blog
       const response1 = await request(app)
         .post('/webhook/sanity')
         .set('sanity-webhook-signature', createValidSignature(validPayload))
@@ -165,11 +167,28 @@ describe('WebhookServer', () => {
         .send(validPayload);
 
       expect(response1.status).toBe(200);
-      expect(response1.body).toEqual({
-        message: 'Webhook ignored - only update operations trigger translation',
-        operation: 'create',
-      });
+      expect(response1.body).toEqual(
+        expect.objectContaining({
+          message: 'Smart trigger conditions not met',
+          documentId: validPayload._id,
+        })
+      );
 
+      // Blog rebuild dispatch should be sent
+      expect(mockOctokit.repos.createDispatchEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          owner: 'test-owner',
+          repo: 'test-repo',
+          event_type: 'sanity_content_changed',
+          client_payload: expect.objectContaining({
+            documentId: validPayload._id,
+          }),
+        })
+      );
+
+      const callCountAfterCreate = (mockOctokit.repos.createDispatchEvent as any).mock.calls.length;
+
+      // delete: unsupported, should be ignored without any dispatch
       const response2 = await request(app)
         .post('/webhook/sanity')
         .set('sanity-webhook-signature', createValidSignature(validPayload))
@@ -178,11 +197,12 @@ describe('WebhookServer', () => {
 
       expect(response2.status).toBe(200);
       expect(response2.body).toEqual({
-        message: 'Webhook ignored - only update operations trigger translation',
+        message: 'Webhook ignored - unsupported operation',
         operation: 'delete',
       });
 
-      expect(mockOctokit.repos.createDispatchEvent).not.toHaveBeenCalled();
+      // No additional dispatches should have occurred for delete
+      expect((mockOctokit.repos.createDispatchEvent as any).mock.calls.length).toBe(callCountAfterCreate);
     });
 
     it('should reject webhook without signature', async () => {
@@ -206,7 +226,7 @@ describe('WebhookServer', () => {
       expect(response.body).toEqual({ error: 'Invalid signature' });
     });
 
-    it('should ignore non-Japanese articles', async () => {
+    it('should not trigger translation for non-Japanese articles but still dispatch blog rebuild', async () => {
       const englishPayload = { ...validPayload, lang: 'en' };
 
       // Mock Sanity response for smart trigger
@@ -231,7 +251,17 @@ describe('WebhookServer', () => {
         documentId: englishPayload._id,
         hasImages: false,
       });
-      expect(mockOctokit.repos.createDispatchEvent).not.toHaveBeenCalled();
+      // Blog rebuild dispatch should be sent
+      expect(mockOctokit.repos.createDispatchEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          owner: 'test-owner',
+          repo: 'test-repo',
+          event_type: 'sanity_content_changed',
+          client_payload: expect.objectContaining({
+            documentId: englishPayload._id,
+          }),
+        })
+      );
     });
 
     it('should handle invalid payload structure', async () => {
@@ -519,11 +549,20 @@ describe('WebhookServer', () => {
           hasImages: false,
         })
       );
-
-      expect(mockOctokit.repos.createDispatchEvent).not.toHaveBeenCalled();
+      // Blog rebuild dispatch should be sent
+      expect(mockOctokit.repos.createDispatchEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          owner: 'test-owner',
+          repo: 'test-repo',
+          event_type: 'sanity_content_changed',
+          client_payload: expect.objectContaining({
+            documentId: 'article-smart-123',
+          }),
+        })
+      );
     });
 
-    it('should NOT trigger translation for non-Japanese article', async () => {
+    it('should NOT trigger translation for non-Japanese article but still dispatch blog rebuild', async () => {
       const englishPayload = {
         ...validPayload,
         lang: 'en',
@@ -559,8 +598,17 @@ describe('WebhookServer', () => {
           hasImages: false,
         })
       );
-
-      expect(mockOctokit.repos.createDispatchEvent).not.toHaveBeenCalled();
+      // Blog rebuild dispatch should be sent
+      expect(mockOctokit.repos.createDispatchEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          owner: 'test-owner',
+          repo: 'test-repo',
+          event_type: 'sanity_content_changed',
+          client_payload: expect.objectContaining({
+            documentId: 'article-smart-123',
+          }),
+        })
+      );
     });
 
     it('should NOT trigger translation when all translations already exist', async () => {
@@ -598,8 +646,17 @@ describe('WebhookServer', () => {
           hasImages: true,
         })
       );
-
-      expect(mockOctokit.repos.createDispatchEvent).not.toHaveBeenCalled();
+      // Blog rebuild dispatch should be sent
+      expect(mockOctokit.repos.createDispatchEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          owner: 'test-owner',
+          repo: 'test-repo',
+          event_type: 'sanity_content_changed',
+          client_payload: expect.objectContaining({
+            documentId: 'article-smart-123',
+          }),
+        })
+      );
     });
 
     it('should handle Sanity API errors gracefully', async () => {
@@ -619,8 +676,17 @@ describe('WebhookServer', () => {
           hasImages: false,
         })
       );
-
-      expect(mockOctokit.repos.createDispatchEvent).not.toHaveBeenCalled();
+      // Blog rebuild dispatch should be sent
+      expect(mockOctokit.repos.createDispatchEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          owner: 'test-owner',
+          repo: 'test-repo',
+          event_type: 'sanity_content_changed',
+          client_payload: expect.objectContaining({
+            documentId: 'article-smart-123',
+          }),
+        })
+      );
     });
 
     it('should handle article not found', async () => {
@@ -642,7 +708,17 @@ describe('WebhookServer', () => {
       );
 
       expect(mockSanityClient.getArticle).toHaveBeenCalledWith('article-smart-123');
-      expect(mockOctokit.repos.createDispatchEvent).not.toHaveBeenCalled();
+      // Blog rebuild dispatch should be sent
+      expect(mockOctokit.repos.createDispatchEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          owner: 'test-owner',
+          repo: 'test-repo',
+          event_type: 'sanity_content_changed',
+          client_payload: expect.objectContaining({
+            documentId: 'article-smart-123',
+          }),
+        })
+      );
     });
 
     it('should include detailed translation status in GitHub payload', async () => {
