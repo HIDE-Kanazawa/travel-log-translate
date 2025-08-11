@@ -6,12 +6,12 @@
   "estimatedCost": "$0.30"
 }
 ℹ️ Translation Status {
-  "completed": 0,
-  "pending": 19,
+  "completed": 19,
+  "pending": 0,
   "total": 19
 }
 ℹ️ DeepL Quota {
-  "used": "16.7%",
-  "remaining": "416.5K chars",
+  "used": "19.8%",
+  "remaining": "400.9K chars",
   "limit": "500.0K chars"
 }
