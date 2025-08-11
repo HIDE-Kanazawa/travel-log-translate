@@ -22,6 +22,11 @@ const EnvSchema = z.object({
   SANITY_DATASET: z.string().min(1),
   SANITY_TOKEN: z.string().min(1),
   SANITY_API_VERSION: z.string().default('2024-01-01'),
+  // Optional: blog rebuild targets
+  BLOG_GITHUB_OWNER: z.string().optional(),
+  BLOG_GITHUB_REPO: z.string().optional(),
+  BLOG_REVALIDATE_URL: z.string().optional(),
+  BLOG_REVALIDATE_TOKEN: z.string().optional(),
 });
 
 const SanityWebhookPayloadSchema = z.object({
@@ -194,6 +199,106 @@ function verifySignature(body: Buffer, sig: string): boolean {
   return false;
 }
 
+async function getArticleMeta(documentId: string): Promise<{
+  _id: string;
+  lang?: string;
+  isTranslation: boolean;
+  slug?: { current: string };
+}> {
+  const query = `*[_type=='article' && _id==$id][0]{
+    _id,
+    lang,
+    slug,
+    "isTranslation": defined(translationOf._ref)
+  }`;
+  const doc = await sanityClient.fetch<any>(query, { id: documentId });
+  return {
+    _id: doc?._id ?? documentId,
+    lang: doc?.lang,
+    isTranslation: !!doc?.isTranslation,
+    slug: doc?.slug,
+  };
+}
+
+async function triggerBlogUpdate(args: {
+  documentId: string;
+  operation: string | undefined;
+  lang?: string;
+  isTranslation: boolean;
+  slug?: { current: string };
+}) {
+  if (!appEnv) throw new Error('env not initialized');
+  const owner = appEnv.BLOG_GITHUB_OWNER || appEnv.GITHUB_OWNER;
+  const repo = appEnv.BLOG_GITHUB_REPO || appEnv.GITHUB_REPO;
+
+  // Dispatch a generic content-changed event for the blog
+  try {
+    const event_type = 'sanity_content_changed' as const;
+    const client_payload = {
+      documentId: args.documentId,
+      operation: args.operation ?? 'unknown',
+      lang: args.lang,
+      isTranslation: args.isTranslation,
+      slug: args.slug?.current,
+      timestamp: new Date().toISOString(),
+    } as { [key: string]: unknown };
+    const resp = await octokit.repos.createDispatchEvent({
+      owner,
+      repo,
+      event_type,
+      client_payload,
+    });
+    try {
+      console.log('Blog repository_dispatch sent', {
+        owner,
+        repo,
+        status: resp.status,
+        event_type,
+        documentId: args.documentId,
+      });
+    } catch {}
+  } catch (e: any) {
+    console.error('Blog repository_dispatch failed', {
+      owner,
+      repo,
+      message: e?.message,
+      status: e?.status ?? e?.response?.status,
+    });
+  }
+
+  // Optionally, call a revalidate endpoint
+  if (appEnv.BLOG_REVALIDATE_URL) {
+    try {
+      const r = await fetch(appEnv.BLOG_REVALIDATE_URL, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          ...(appEnv.BLOG_REVALIDATE_TOKEN
+            ? { authorization: `Bearer ${appEnv.BLOG_REVALIDATE_TOKEN}` }
+            : {}),
+        },
+        body: JSON.stringify({
+          documentId: args.documentId,
+          operation: args.operation ?? 'unknown',
+          lang: args.lang,
+          isTranslation: args.isTranslation,
+          slug: args.slug?.current,
+          timestamp: new Date().toISOString(),
+        }),
+      });
+      console.log('Blog revalidate request sent', {
+        url: appEnv.BLOG_REVALIDATE_URL,
+        status: r.status,
+      });
+    } catch (e: any) {
+      console.error('Blog revalidate request failed', {
+        url: appEnv.BLOG_REVALIDATE_URL,
+        message: e?.message,
+      });
+    }
+  }
+}
+
 async function shouldTriggerTranslation(documentId: string) {
   if (!appEnv) throw new Error('env not initialized');
   // Language must be ja and must have coverImage or gallery images
@@ -275,10 +380,28 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const payload = SanityWebhookPayloadSchema.parse(rawPayload);
   console.log('Webhook received', { documentId: payload._id, type: payload._type });
 
+  // Fetch article meta (lang, isTranslation, slug)
+  const meta = await getArticleMeta(payload._id);
+
   // Smart conditions
   const check = await shouldTriggerTranslation(payload._id);
   console.log('Smart translation check', check);
   if (!check.shouldTrigger) {
+    // Even if we don't trigger translation, notify blog to rebuild/revalidate
+    try {
+      await triggerBlogUpdate({
+        documentId: payload._id,
+        operation: op,
+        lang: meta.lang,
+        isTranslation: meta.isTranslation,
+        slug: meta.slug,
+      });
+    } catch (e) {
+      console.error('Failed to trigger blog update (non-translation path)', {
+        documentId: payload._id,
+        message: (e as any)?.message,
+      });
+    }
     return res.json({ message: 'Smart trigger conditions not met', reason: check });
   }
 
@@ -363,6 +486,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         message: pollErr?.message,
       });
     }
+    // Also notify blog about content change
+    try {
+      await triggerBlogUpdate({
+        documentId: payload._id,
+        operation: op,
+        lang: meta.lang,
+        isTranslation: meta.isTranslation,
+        slug: meta.slug,
+      });
+    } catch (e) {
+      console.error('Failed to trigger blog update (translation path)', {
+        documentId: payload._id,
+        message: (e as any)?.message,
+      });
+    }
     return res.json({
       message: 'Translation workflow triggered',
       dispatched: resp.status === 204,
@@ -380,6 +518,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       repo: appEnv!.GITHUB_REPO,
       eventType: dispatchPayload.event_type,
     });
+    try {
+      await triggerBlogUpdate({
+        documentId: payload._id,
+        operation: op,
+        lang: meta.lang,
+        isTranslation: meta.isTranslation,
+        slug: meta.slug,
+      });
+    } catch {}
     return res.status(502).json({
       error: 'Failed to dispatch GitHub workflow',
       status: err?.status ?? err?.response?.status,

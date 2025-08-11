@@ -156,14 +156,52 @@ export class SanityArticleClient {
     translatedContent: any[],
     translatedTags: string[] | undefined,
     language: TargetLanguage,
-    dryRun = false
+    dryRun?: boolean
+  ): Promise<{
+    documentId: string;
+    wasCreated: boolean;
+    operation: 'create' | 'update' | 'skip';
+  }>;
+  async createOrUpdateTranslation(
+    baseDocument: SanityArticle,
+    translatedTitle: string,
+    _translatedExcerpt: string | undefined,
+    translatedContent: any[],
+    translatedTags: string[] | undefined,
+    language: TargetLanguage,
+    dryRun: boolean,
+    options: {
+      translatedSlug?: string;
+      translatedPlaceName?: string;
+      prefectureOverride?: string;
+    }
+  ): Promise<{
+    documentId: string;
+    wasCreated: boolean;
+    operation: 'create' | 'update' | 'skip';
+  }>;
+  async createOrUpdateTranslation(
+    baseDocument: SanityArticle,
+    translatedTitle: string,
+    _translatedExcerpt: string | undefined,
+    translatedContent: any[],
+    translatedTags: string[] | undefined,
+    language: TargetLanguage,
+    dryRun = false,
+    options?: {
+      translatedSlug?: string;
+      translatedPlaceName?: string;
+      prefectureOverride?: string;
+    }
   ): Promise<{
     documentId: string;
     wasCreated: boolean;
     operation: 'create' | 'update' | 'skip';
   }> {
     const translatedId = this.generateTranslatedId(baseDocument._id, language);
-    const translatedSlug = this.generateTranslatedSlug(baseDocument.slug.current, language);
+    const translatedSlug = options?.translatedSlug
+      ? options.translatedSlug
+      : this.generateTranslatedSlug(baseDocument.slug.current, language);
 
     // Check if document already exists
     const existingDoc = await this.translationExists(baseDocument._id, language);
@@ -196,9 +234,9 @@ export class SanityArticleClient {
       // Copy required fields
       publishedAt: baseDocument.publishedAt,
       type: baseDocument.type,
-      prefecture: baseDocument.prefecture,
+      prefecture: options?.prefectureOverride ?? baseDocument.prefecture,
       // Copy optional fields if they exist
-      placeName: baseDocument.placeName,
+      placeName: options?.translatedPlaceName ?? baseDocument.placeName,
       // Copy image fields (Cover Image, Gallery, etc.)
       ...(baseDocument.coverImage && { coverImage: baseDocument.coverImage }),
       ...(baseDocument.mainImage && { mainImage: baseDocument.mainImage }),
@@ -381,13 +419,21 @@ export class SanityArticleClient {
    */
   async batchCreateTranslations(
     baseDocument: SanityArticle,
-    translations: {
-      language: TargetLanguage;
-      title: string;
-      excerpt?: string;
-      content: any[];
-      tags?: string[];
-    }[],
+    translations: (
+      | {
+          language: TargetLanguage;
+          title: string;
+          excerpt?: string;
+          content: any[];
+          tags?: string[];
+        }
+      | {
+          language: TargetLanguage;
+          translatedDocument: SanityArticle;
+          usedCache: boolean;
+          characterCount: number;
+        }
+    )[],
     dryRun = false
   ): Promise<{
     successful: number;
@@ -401,28 +447,52 @@ export class SanityArticleClient {
     }>;
   }> {
     const results = await Promise.all(
-      translations.map(async translation => {
+      translations.map(async t => {
         try {
-          const result = await this.createOrUpdateTranslation(
-            baseDocument,
-            translation.title,
-            translation.excerpt,
-            translation.content,
-            translation.tags,
-            translation.language,
-            dryRun
-          );
-
-          return {
-            language: translation.language,
-            status: result.operation === 'skip' ? ('skipped' as const) : ('success' as const),
-            documentId: result.documentId,
-          };
+          if ('translatedDocument' in t) {
+            // Adapt from TranslationResult shape
+            const td = t.translatedDocument;
+            const result = await this.createOrUpdateTranslation(
+              baseDocument,
+              td.title,
+              undefined,
+              td.content,
+              td.tags,
+              t.language,
+              dryRun,
+              {
+                translatedSlug: td.slug.current,
+                translatedPlaceName: td.placeName,
+                prefectureOverride: td.prefecture,
+              }
+            );
+            return {
+              language: t.language,
+              status: result.operation === 'skip' ? ('skipped' as const) : ('success' as const),
+              documentId: result.documentId,
+            };
+          } else {
+            // Original shape
+            const result = await this.createOrUpdateTranslation(
+              baseDocument,
+              t.title,
+              t.excerpt,
+              t.content,
+              t.tags,
+              t.language,
+              dryRun
+            );
+            return {
+              language: t.language,
+              status: result.operation === 'skip' ? ('skipped' as const) : ('success' as const),
+              documentId: result.documentId,
+            };
+          }
         } catch (error) {
           return {
-            language: translation.language,
+            language: (t as any).language,
             status: 'failed' as const,
-            documentId: this.generateTranslatedId(baseDocument._id, translation.language),
+            documentId: this.generateTranslatedId(baseDocument._id, (t as any).language),
             error: error instanceof Error ? error.message : String(error),
           };
         }

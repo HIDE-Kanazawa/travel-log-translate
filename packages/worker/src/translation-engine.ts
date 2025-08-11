@@ -375,6 +375,7 @@ export class TranslationEngine {
       : sourceDocument.prefecture;
 
     // Create the translated document
+    const translatedSlugCurrent = `${convertToSlug(translatedSlugText)}-${language}`;
     const translatedDocument: SanityArticle = {
       ...sourceDocument,
       _id:
@@ -384,7 +385,7 @@ export class TranslationEngine {
       title: translatedTitle,
       slug: {
         _type: 'slug',
-        current: `${convertToSlug(translatedSlugText)}-${language}`,
+        current: translatedSlugCurrent,
       },
 
       content: translatedContent,
@@ -400,14 +401,19 @@ export class TranslationEngine {
 
     // Save to Sanity if not dry run
     if (!dryRun) {
-      await this.sanityClient.createOrUpdateTranslation(
+      await (this.sanityClient as any).createOrUpdateTranslation(
         sourceDocument,
         translatedTitle,
         undefined,
         translatedContent,
         translatedTags,
         language,
-        false
+        false,
+        {
+          translatedSlug: translatedSlugCurrent,
+          translatedPlaceName,
+          prefectureOverride: prefectureInJapanese,
+        }
       );
     }
 
