@@ -274,11 +274,10 @@ export class TranslationEngine {
     sanitizedContent: any[],
     dryRun: boolean
   ): Promise<TranslationResult> {
-    // Extract texts for translation
+    // Extract texts for translation (excluding slug)
     const extractedTexts = extractTextsFromPortableText(sanitizedContent);
     const textsToTranslate = [
       sourceDocument.title,
-      sourceDocument.slug.current, // Add slug for translation
       ...(sourceDocument.placeName ? [sourceDocument.placeName] : []),
       ...(sourceDocument.tags || []),
       ...extractedTexts.map(t => t.text),
@@ -289,7 +288,6 @@ export class TranslationEngine {
 
     let translationIndex = 0;
     const translatedTitle = translationResult.translations[translationIndex++];
-    const translatedSlugText = translationResult.translations[translationIndex++];
 
     // Get translated placeName if it exists
     const translatedPlaceName = sourceDocument.placeName 
@@ -319,8 +317,8 @@ export class TranslationEngine {
     // Keep prefecture as canonical code across languages
     const prefectureCode = sourceDocument.prefecture;
 
-    // Create the translated document
-    const translatedSlugCurrent = `${convertToSlug(translatedSlugText)}-${language}`;
+    // Generate slug from translated title instead of translating the original slug
+    const translatedSlugCurrent = `${convertToSlug(translatedTitle)}-${language}`;
     const translatedDocument: SanityArticle = {
       ...sourceDocument,
       _id:
