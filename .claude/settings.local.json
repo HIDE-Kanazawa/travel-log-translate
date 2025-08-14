@@ -79,8 +79,17 @@
       "Bash(timeout 30s pnpm --filter worker test)",
       "Bash(cat:*)",
       "Bash(npm install:*)",
-      "Bash(echo:*)"
+      "Bash(echo:*)",
+      "Bash(DEEPL_API_KEY=\"d5d2d028-7460-4c88-93bb-04e168b20ae3:fx\" SANITY_PROJECT_ID=\"fcz6on8p\" SANITY_DATASET=\"production\" SANITY_TOKEN=\"skWi3IXck1RX0FCtbYrXfE4Eobiz5dTDYau7vFFsivLzlB3nthBpBH2ztP3PIc0QbbLFBMA9LFfIYicdKMItIh6NaD9trarF1k2M7oVipmodqt71GTWXpbceqrPddm9LS2a3EUUqAZAZ1IRWnNVGC7iiy7hUNeaKX2fWeX8dKy6lWQIecF6T\" node packages/worker/dist/index.js translate article-1754520101695-ja --dry-run --languages=th,ar,ko)",
+      "Bash(DEEPL_API_KEY=\"d5d2d028-7460-4c88-93bb-04e168b20ae3:fx\" SANITY_PROJECT_ID=\"fcz6on8p\" SANITY_DATASET=\"production\" SANITY_TOKEN=\"skWi3IXck1RX0FCtbYrXfE4Eobiz5dTDYau7vFFsivLzlB3nthBpBH2ztP3PIc0QbbLFBMA9LFfIYicdKMItIh6NaD9trarF1k2M7oVipmodqt71GTWXpbceqrPddm9LS2a3EUUqAZAZ1IRWnNVGC7iiy7hUNeaKX2fWeX8dKy6lWQIecF6T\" node packages/worker/dist/index.js article-1754520101695-ja --dry-run --languages=th,ar,ko)",
+      "Bash(DEEPL_API_KEY=\"d5d2d028-7460-4c88-93bb-04e168b20ae3:fx\" SANITY_PROJECT_ID=\"fcz6on8p\" SANITY_DATASET=\"production\" SANITY_TOKEN=\"skWi3IXck1RX0FCtbYrXfE4Eobiz5dTDYau7vFFsiveLzlB3nthBpBH2ztP3PIc0QbbLFBMA9LFfIYicdKMItIh6NaD9trarF1k2M7oVipmodqt71GTWXpbceqrPddm9LS2a3EUUqAZAZ1IRWnNVGC7iiy7hUNeaKX2fWeX8dKy6lWQIecF6T\" node -e \"\nconst { SanityArticleClient } = require(''./packages/shared/dist/index.js'');\nconst { validateEnvironment } = require(''./packages/shared/dist/index.js'');\n\nasync function main() {\n  const env = validateEnvironment(process.env);\n  \n  const client = new SanityArticleClient(env.SANITY_PROJECT_ID, env.SANITY_DATASET, env.SANITY_TOKEN);\n  const articles = await client.getClient().fetch(''*[_type == \"\"article\"\" && lang == \"\"ja\"\"][0..5]{_id, title, slug}'');\n  console.log(JSON.stringify(articles, null, 2));\n}\n\nmain().catch(console.error);\n\")",
+      "Bash(DEEPL_API_KEY=\"d5d2d028-7460-4c88-93bb-04e168b20ae3:fx\" SANITY_PROJECT_ID=\"fcz6on8p\" SANITY_DATASET=\"production\" SANITY_TOKEN=\"skWi3IXck1RX0FCtbYrXfE4Eobiz5dTDYau7vFFsivLzlB3nthBpBH2ztP3PIc0QbbLFBMA9LFfIYicdKMItIh6NaD9trarF1k2M7oVipmodqt71GTWXpbceqrPddm9LS2a3EUUqAZAZ1IRWnNVGC7iiy7hUNeaKX2fWeX8dKy6lWQIecF6T\" node packages/worker/dist/index.js stats article-1754490080280-ja)",
+      "Bash(DEEPL_API_KEY=\"d5d2d028-7460-4c88-93bb-04e168b20ae3:fx\" SANITY_PROJECT_ID=\"fcz6on8p\" SANITY_DATASET=\"production\" SANITY_TOKEN=\"skWi3IXck1RX0FCtbYrXfE4Eobiz5dTDYau7vFFsivLzlB3nthBpBH2ztP3PIc0QbbLFBMA9LFfIYicdKMItIh6NaD9trarF1k2M7oVipmodqt71GTWXpbceqrPddm9LS2a3EUUqAZAZ1IRWnNVGC7iiy7hUNeaKX2fWeX8dKy6lWQIecF6T\" node test-translation-slug.js)"
     ],
-    "deny": []
+    "deny": [],
+    "defaultMode": "acceptEdits",
+    "additionalDirectories": [
+      "/Users/yamazaki/旅ログ記事生成"
+    ]
   }
 }

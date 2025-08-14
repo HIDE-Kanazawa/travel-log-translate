@@ -317,8 +317,20 @@ export class TranslationEngine {
     // Keep prefecture as canonical code across languages
     const prefectureCode = sourceDocument.prefecture;
 
-    // Generate slug from translated title instead of translating the original slug
-    const translatedSlugCurrent = `${convertToSlug(translatedTitle)}-${language}`;
+    // Generate slug with proper fallback logic
+    let translatedSlugCurrent: string;
+    
+    if (translatedTitle && translatedTitle.trim().length > 0) {
+      // Use translated title if available and valid
+      const baseSlug = convertToSlug(translatedTitle);
+      translatedSlugCurrent = baseSlug.length > 0 
+        ? `${baseSlug}-${language}` 
+        : this.generateFallbackSlug(sourceDocument, language);
+    } else {
+      // Fallback to source document slug logic
+      translatedSlugCurrent = this.generateFallbackSlug(sourceDocument, language);
+    }
+      
     const translatedDocument: SanityArticle = {
       ...sourceDocument,
       _id:
@@ -366,6 +378,29 @@ export class TranslationEngine {
       usedCache: Boolean(translationResult.usedCache && (Array.isArray(translationResult.usedCache) ? translationResult.usedCache.some(Boolean) : translationResult.usedCache)),
       characterCount: (translationResult as any).totalCharacterCount ?? (translationResult as any).totalCharacters ?? 0,
     };
+  }
+
+  /**
+   * Generate fallback slug when translation fails or produces empty result
+   */
+  private generateFallbackSlug(sourceDocument: SanityArticle, language: TargetLanguage): string {
+    // Try to use source document slug as base
+    if (sourceDocument.slug?.current) {
+      const baseSlug = sourceDocument.slug.current.replace(/-ja$/, '');
+      return `${baseSlug}-${language}`;
+    }
+    
+    // Try to use source title as fallback
+    if (sourceDocument.title && sourceDocument.title.trim().length > 0) {
+      const baseSlug = convertToSlug(sourceDocument.title);
+      if (baseSlug.length > 0) {
+        return `${baseSlug}-${language}`;
+      }
+    }
+    
+    // Last resort: use document ID
+    const cleanId = sourceDocument._id.replace(/[^a-z0-9]/gi, '').toLowerCase();
+    return `article-${cleanId}-${language}`;
   }
 
   /**
