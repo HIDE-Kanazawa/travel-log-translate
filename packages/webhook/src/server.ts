@@ -392,13 +392,20 @@ class WebhookServer {
         });
 
         if (!triggerCheck.shouldTrigger) {
-          // Even if translation doesn't trigger, notify the blog to rebuild
-          await this.triggerBlogUpdate(payload._id, op);
+          // Only trigger blog update if translation is complete
+          const shouldTriggerBlogUpdate = triggerCheck.hasImages && 
+                                         triggerCheck.reason === 'All translations already exist';
+          
+          if (shouldTriggerBlogUpdate) {
+            await this.triggerBlogUpdate(payload._id, op);
+          }
+          
           return res.json({ 
             message: 'Smart trigger conditions not met',
             reason: triggerCheck.reason,
             documentId: payload._id,
             hasImages: triggerCheck.hasImages,
+            blogUpdateTriggered: shouldTriggerBlogUpdate,
           });
         }
 
@@ -427,8 +434,7 @@ class WebhookServer {
           repo: this.config.GITHUB_REPO,
         });
 
-        // After dispatching translation, also notify the blog to rebuild
-        await this.triggerBlogUpdate(payload._id, op);
+        
 
         res.json({
           message: 'Translation workflow triggered',

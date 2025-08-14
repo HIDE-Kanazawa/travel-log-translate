@@ -43,6 +43,11 @@ const EnvSchema = z.object({
   SANITY_DATASET: z.string().min(1),
   SANITY_TOKEN: z.string().min(1),
   SANITY_API_VERSION: z.string().default('2024-01-01'),
+  // Blog specific GitHub settings (optional)
+  BLOG_GITHUB_OWNER: z.string().optional(),
+  BLOG_GITHUB_REPO: z.string().optional(),
+  BLOG_REVALIDATE_URL: z.string().optional(),
+  BLOG_REVALIDATE_TOKEN: z.string().optional(),
 });
 
 /**
@@ -314,6 +319,63 @@ async function shouldTriggerTranslation(documentId: string): Promise<{
   }
 }
 
+/**
+ * Trigger blog rebuild via GitHub repository_dispatch
+ */
+async function triggerBlogUpdate(documentId: string, operation?: string): Promise<void> {
+  try {
+    const blogOwner = appEnv.BLOG_GITHUB_OWNER || appEnv.GITHUB_OWNER;
+    const blogRepo = appEnv.BLOG_GITHUB_REPO || appEnv.GITHUB_REPO;
+
+    const event_type = 'sanity_content_changed' as const;
+    const payload = {
+      event_type,
+      client_payload: {
+        documentId,
+        operation: operation || 'update',
+        triggeredBy: 'sanity-webhook-vercel',
+        timestamp: new Date().toISOString(),
+      },
+    } as const;
+
+    const resp = await octokit.repos.createDispatchEvent({
+      owner: blogOwner,
+      repo: blogRepo,
+      ...payload,
+    });
+
+    console.log('Blog repository_dispatch sent', {
+      status: resp.status,
+      owner: blogOwner,
+      repo: blogRepo,
+      eventType: event_type,
+      documentId,
+    });
+
+    // Optional blog revalidation
+    if (appEnv.BLOG_REVALIDATE_URL && appEnv.BLOG_REVALIDATE_TOKEN) {
+      try {
+        const r = await fetch(appEnv.BLOG_REVALIDATE_URL, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${appEnv.BLOG_REVALIDATE_TOKEN}` },
+        });
+        console.log('Blog revalidate request sent', { status: r.status });
+      } catch (err) {
+        console.error('Blog revalidate request failed', {
+          message: (err as any)?.message,
+          documentId,
+        });
+      }
+    }
+  } catch (err) {
+    console.error('Blog repository_dispatch failed', {
+      status: (err as any)?.status ?? (err as any)?.response?.status,
+      message: (err as any)?.message,
+      documentId,
+    });
+  }
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     // Initialize services
@@ -439,11 +501,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
 
       if (!triggerCheck.shouldTrigger) {
+        // Only trigger blog update if translation is complete
+        const shouldTriggerBlogUpdate = triggerCheck.hasImages && 
+                                       triggerCheck.reason === 'All translations already exist';
+        
+        if (shouldTriggerBlogUpdate) {
+          await triggerBlogUpdate(payload._id, op);
+        }
+        
         return res.json({ 
           message: 'Smart trigger conditions not met',
           reason: triggerCheck.reason,
           documentId: payload._id,
           hasImages: triggerCheck.hasImages,
+          blogUpdateTriggered: shouldTriggerBlogUpdate,
         });
       }
 

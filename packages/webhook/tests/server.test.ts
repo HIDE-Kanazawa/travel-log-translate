@@ -161,9 +161,9 @@ describe('WebhookServer', () => {
       });
     });
 
-    it('should ignore delete and still trigger blog rebuild on create', async () => {
+    it('should ignore delete and not trigger blog rebuild on create when conditions not met', async () => {
       // create: allowed path, but if smart trigger conditions are not met,
-      // server still sends a blog repository_dispatch to rebuild the blog
+      // server no longer sends a blog repository_dispatch by default
       const response1 = await request(app)
         .post('/webhook/sanity')
         .set('sanity-webhook-signature', createValidSignature(validPayload))
@@ -175,20 +175,12 @@ describe('WebhookServer', () => {
         expect.objectContaining({
           message: 'Smart trigger conditions not met',
           documentId: validPayload._id,
+          blogUpdateTriggered: false,
         })
       );
 
-      // Blog rebuild dispatch should be sent
-      expect(mockOctokit.repos.createDispatchEvent).toHaveBeenCalledWith(
-        expect.objectContaining({
-          owner: 'test-owner',
-          repo: 'test-repo',
-          event_type: 'sanity_content_changed',
-          client_payload: expect.objectContaining({
-            documentId: validPayload._id,
-          }),
-        })
-      );
+      // Blog rebuild dispatch should NOT be sent when conditions are not met
+      expect(mockOctokit.repos.createDispatchEvent).not.toHaveBeenCalled();
 
       const callCountAfterCreate = (mockOctokit.repos.createDispatchEvent as any).mock.calls.length;
 
@@ -254,18 +246,10 @@ describe('WebhookServer', () => {
         reason: "Article language is 'en', not Japanese",
         documentId: englishPayload._id,
         hasImages: false,
+        blogUpdateTriggered: false,
       });
-      // Blog rebuild dispatch should be sent
-      expect(mockOctokit.repos.createDispatchEvent).toHaveBeenCalledWith(
-        expect.objectContaining({
-          owner: 'test-owner',
-          repo: 'test-repo',
-          event_type: 'sanity_content_changed',
-          client_payload: expect.objectContaining({
-            documentId: englishPayload._id,
-          }),
-        })
-      );
+      // Blog rebuild dispatch should NOT be sent for non-Japanese articles
+      expect(mockOctokit.repos.createDispatchEvent).not.toHaveBeenCalled();
     });
 
     it('should handle invalid payload structure', async () => {
@@ -554,19 +538,11 @@ describe('WebhookServer', () => {
           message: 'Smart trigger conditions not met',
           reason: 'Article has no images',
           hasImages: false,
+          blogUpdateTriggered: false,
         })
       );
-      // Blog rebuild dispatch should be sent
-      expect(mockOctokit.repos.createDispatchEvent).toHaveBeenCalledWith(
-        expect.objectContaining({
-          owner: 'test-owner',
-          repo: 'test-repo',
-          event_type: 'sanity_content_changed',
-          client_payload: expect.objectContaining({
-            documentId: 'article-smart-123',
-          }),
-        })
-      );
+      // Blog rebuild dispatch should NOT be sent for articles without images
+      expect(mockOctokit.repos.createDispatchEvent).not.toHaveBeenCalled();
     });
 
     it('should NOT trigger translation for non-Japanese article but still dispatch blog rebuild', async () => {
@@ -603,19 +579,11 @@ describe('WebhookServer', () => {
           message: 'Smart trigger conditions not met',
           reason: `Article language is 'en', not Japanese`,
           hasImages: false,
+          blogUpdateTriggered: false,
         })
       );
-      // Blog rebuild dispatch should be sent
-      expect(mockOctokit.repos.createDispatchEvent).toHaveBeenCalledWith(
-        expect.objectContaining({
-          owner: 'test-owner',
-          repo: 'test-repo',
-          event_type: 'sanity_content_changed',
-          client_payload: expect.objectContaining({
-            documentId: 'article-smart-123',
-          }),
-        })
-      );
+      // Blog rebuild dispatch should NOT be sent for non-Japanese articles
+      expect(mockOctokit.repos.createDispatchEvent).not.toHaveBeenCalled();
     });
 
     it('should NOT trigger translation when all translations already exist', async () => {
@@ -651,9 +619,10 @@ describe('WebhookServer', () => {
           message: 'Smart trigger conditions not met',
           reason: 'All translations already exist',
           hasImages: true,
+          blogUpdateTriggered: true,
         })
       );
-      // Blog rebuild dispatch should be sent
+      // Blog rebuild dispatch should be sent for completed translations
       expect(mockOctokit.repos.createDispatchEvent).toHaveBeenCalledWith(
         expect.objectContaining({
           owner: 'test-owner',
@@ -681,19 +650,11 @@ describe('WebhookServer', () => {
           message: 'Smart trigger conditions not met',
           reason: 'Error checking conditions: Sanity API connection failed',
           hasImages: false,
+          blogUpdateTriggered: false,
         })
       );
-      // Blog rebuild dispatch should be sent
-      expect(mockOctokit.repos.createDispatchEvent).toHaveBeenCalledWith(
-        expect.objectContaining({
-          owner: 'test-owner',
-          repo: 'test-repo',
-          event_type: 'sanity_content_changed',
-          client_payload: expect.objectContaining({
-            documentId: 'article-smart-123',
-          }),
-        })
-      );
+      // Blog rebuild dispatch should NOT be sent for API errors
+      expect(mockOctokit.repos.createDispatchEvent).not.toHaveBeenCalled();
     });
 
     it('should handle article not found', async () => {
@@ -711,21 +672,13 @@ describe('WebhookServer', () => {
           message: 'Smart trigger conditions not met',
           reason: 'Article not found',
           hasImages: false,
+          blogUpdateTriggered: false,
         })
       );
 
       expect(mockSanityClient.getArticle).toHaveBeenCalledWith('article-smart-123');
-      // Blog rebuild dispatch should be sent
-      expect(mockOctokit.repos.createDispatchEvent).toHaveBeenCalledWith(
-        expect.objectContaining({
-          owner: 'test-owner',
-          repo: 'test-repo',
-          event_type: 'sanity_content_changed',
-          client_payload: expect.objectContaining({
-            documentId: 'article-smart-123',
-          }),
-        })
-      );
+      // Blog rebuild dispatch should NOT be sent for article not found
+      expect(mockOctokit.repos.createDispatchEvent).not.toHaveBeenCalled();
     });
 
     it('should include detailed translation status in GitHub payload', async () => {
