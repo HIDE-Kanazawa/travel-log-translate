@@ -242,14 +242,13 @@ translationOf: {
 | `shared/` | 共通ライブラリ | DeepL API, Sanity client, 型定義 |
 | `webhook/` | スマートトリガー | 条件判定, GitHub Actions連携 |
 | `worker/` | 翻訳エンジン | Sanity記事翻訳, 画像共有 |
-| `content-publisher/` | 記事投稿 | Markdown → Sanity変換 |
 
 ### **開発チーム**
 | Role | Responsibility |
 |------|---------------|
 | **Product Owner** | 要件定義・承認 |
 | **Claude Code** | 自動翻訳システム開発 |
-| **Content Creator** | 外部AI記事生成・画像追加 |
+| **Content Creator** | Sanity記事投稿・画像追加 |
 
 ---
 
@@ -337,5 +336,6 @@ my-sanity-site/
 | 2025-08-10 | v0.2.3 | 20言語対応（DeepL APIサポート言語に基づく最適化 + タイ語含む） + 翻訳エラー修正 |
 | 2025-08-06 | v0.2.2 | Sanityスキーマ同期要件特定 + プロジェクト間依存関係明確化 |
 | 2025-08-06 | v0.2.1 | 多言語記事関連性管理システム + 言語切り替え対応 |
+| 2025-08-14 | v0.3.0 | 外部AI記事要件削除 + 簡素化されたワークフロー |
 | 2025-08-05 | v0.2.0 | スマート翻訳パイプライン + 外部AI記事対応 |
 | 2025-08-05 | v0.1.1 | 基本翻訳システム + direct commit |
