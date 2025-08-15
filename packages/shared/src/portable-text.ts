@@ -30,24 +30,34 @@ export function extractTextsFromPortableText(blocks: PortableTextBlock[]): Extra
 /**
  * Convert translated text to URL-friendly slug format
  */
-export function convertToSlug(text: string): string {
-  return text
+export function convertToSlug(text: string, keepJapanese: boolean = true): string {
+  let processed = text
     .toLowerCase()
     .trim()
     // Replace spaces and special characters with hyphens
     .replace(/[\s\-_]+/g, '-')
     // Remove brackets and special characters
-    .replace(/[【】\[\]()（）]/g, '')
+    .replace(/[\u3010\u3011\[\]()\uff08\uff09]/g, '')
     // Normalize accented characters to their base form
     .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    // Remove special characters and keep only alphanumeric, hyphens, and Unicode letters
-    .replace(/[^a-z0-9\-\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF\u3400-\u4DBF]/g, '')
+    .replace(/[\u0300-\u036f]/g, '');
+
+  if (keepJapanese) {
+    // Keep Japanese characters for Japanese content
+    processed = processed
+      .replace(/[^a-z0-9\-\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF\u3400-\u4DBF]/g, '');
+  } else {
+    // Remove Japanese characters for international content
+    processed = processed
+      .replace(/[^a-z0-9\-\u00C0-\u017F\u0100-\u024F]/g, '');
+  }
+
+  return processed
     // Remove multiple consecutive hyphens
     .replace(/-+/g, '-')
     // Remove leading/trailing hyphens
     .replace(/^-+|-+$/g, '')
-    // Recompose Unicode to NFC to avoid decomposed forms (e.g., ク + ゙ -> グ)
+    // Recompose Unicode to NFC to avoid decomposed forms
     .normalize('NFC')
     // Limit length to 50 characters for SEO
     .substring(0, 50)

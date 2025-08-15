@@ -322,7 +322,7 @@ export class TranslationEngine {
     
     if (translatedTitle && translatedTitle.trim().length > 0) {
       // Use translated title if available and valid
-      const baseSlug = convertToSlug(translatedTitle);
+      const baseSlug = convertToSlug(translatedTitle, false);
       translatedSlugCurrent = baseSlug.length > 0 
         ? `${baseSlug}-${language}` 
         : this.generateFallbackSlug(sourceDocument, language);
@@ -392,7 +392,7 @@ export class TranslationEngine {
     
     // Try to use source title as fallback
     if (sourceDocument.title && sourceDocument.title.trim().length > 0) {
-      const baseSlug = convertToSlug(sourceDocument.title);
+      const baseSlug = convertToSlug(sourceDocument.title, false);
       if (baseSlug.length > 0) {
         return `${baseSlug}-${language}`;
       }

@@ -925,4 +925,11 @@ export declare const EnvironmentConfigSchema: z.ZodObject<{
     SANITY_API_VERSION?: string | undefined;
 }>;
 export type EnvironmentConfig = z.infer<typeof EnvironmentConfigSchema>;
+/**
+ * Portable text processing functions
+ */
+export declare function extractTextsFromPortableText(blocks: PortableTextBlock[]): ExtractedText[];
+export declare function convertToSlug(text: string, keepJapanese?: boolean): string;
+export declare function injectTextsIntoPortableText(blocks: PortableTextBlock[], extractedTexts: ExtractedText[], translations: string[]): PortableTextBlock[];
+export declare function countCharactersInPortableText(blocks: PortableTextBlock[]): number;
 //# sourceMappingURL=types.d.ts.map
