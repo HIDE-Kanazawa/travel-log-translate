@@ -347,7 +347,7 @@ export class DeepLClient {
   /**
    * Check if translation would exceed character limit
    */
-  async checkCharacterLimit(estimatedCharacters: number, maxPercentage = 90): Promise<boolean> {
+  async checkCharacterLimit(estimatedCharacters: number, maxPercentage = 95): Promise<boolean> {
     try {
       const usage = await this.getUsage();
       const wouldExceed =
