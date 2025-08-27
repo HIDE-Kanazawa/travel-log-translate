@@ -6,7 +6,7 @@ import type { EnvironmentConfig } from './types.js';
 const config: EnvironmentConfig = {
   SANITY_PROJECT_ID: process.env.SANITY_PROJECT_ID!,
   SANITY_DATASET: process.env.SANITY_DATASET!,
-  SANITY_TOKEN: process.env.SANITY_TOKEN!,
+  SANITY_API_TOKEN: process.env.SANITY_API_TOKEN!,
   SANITY_API_VERSION: '2023-01-01',
   DEEPL_API_KEY: process.env.DEEPL_API_KEY || 'dummy', // Not needed for this script
 };
@@ -15,7 +15,7 @@ const config: EnvironmentConfig = {
 const client = createClient({
   projectId: config.SANITY_PROJECT_ID,
   dataset: config.SANITY_DATASET,
-  token: config.SANITY_TOKEN,
+  token: config.SANITY_API_TOKEN,
   apiVersion: config.SANITY_API_VERSION,
   useCdn: false,
 });

@@ -12,7 +12,7 @@ export * from './portable-text.js';
 
 // Utility functions
 export function validateEnvironment(env: Record<string, string | undefined>) {
-  const required = ['DEEPL_API_KEY', 'SANITY_PROJECT_ID', 'SANITY_DATASET', 'SANITY_TOKEN'];
+  const required = ['DEEPL_API_KEY', 'SANITY_PROJECT_ID', 'SANITY_DATASET', 'SANITY_API_TOKEN'];
 
   const missing = required.filter(key => !env[key]);
 
@@ -24,7 +24,7 @@ export function validateEnvironment(env: Record<string, string | undefined>) {
     DEEPL_API_KEY: env.DEEPL_API_KEY!,
     SANITY_PROJECT_ID: env.SANITY_PROJECT_ID!,
     SANITY_DATASET: env.SANITY_DATASET!,
-    SANITY_TOKEN: env.SANITY_TOKEN!,
+    SANITY_API_TOKEN: env.SANITY_API_TOKEN!,
     SANITY_API_VERSION: env.SANITY_API_VERSION || '2024-01-01',
   };
 }

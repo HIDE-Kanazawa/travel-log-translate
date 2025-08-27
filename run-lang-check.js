@@ -31,10 +31,10 @@ const envVars = loadEnvFile();
 console.log('🔧 環境変数を設定中...');
 console.log(`   SANITY_PROJECT_ID: ${envVars.SANITY_PROJECT_ID ? '✅' : '❌'}`);
 console.log(`   SANITY_DATASET: ${envVars.SANITY_DATASET ? '✅' : '❌'}`);
-console.log(`   SANITY_TOKEN: ${envVars.SANITY_TOKEN ? '✅' : '❌'}\n`);
+console.log(`   SANITY_API_TOKEN: ${envVars.SANITY_API_TOKEN ? '✅' : '❌'}\n`);
 
 // 必要な環境変数をチェック
-const requiredVars = ['SANITY_PROJECT_ID', 'SANITY_DATASET', 'SANITY_TOKEN'];
+const requiredVars = ['SANITY_PROJECT_ID', 'SANITY_DATASET', 'SANITY_API_TOKEN'];
 const missingVars = requiredVars.filter(varName => !envVars[varName]);
 
 if (missingVars.length > 0) {

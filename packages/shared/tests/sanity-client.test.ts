@@ -24,7 +24,7 @@ describe('SanityArticleClient', () => {
       DEEPL_API_KEY: 'test-key',
       SANITY_PROJECT_ID: 'test-project',
       SANITY_DATASET: 'test-dataset',
-      SANITY_TOKEN: 'test-token',
+      SANITY_API_TOKEN: 'test-token',
       SANITY_API_VERSION: '2024-01-01',
     };
     client = new SanityArticleClient(config);

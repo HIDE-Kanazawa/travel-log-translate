@@ -909,19 +909,19 @@ export declare const EnvironmentConfigSchema: z.ZodObject<{
     DEEPL_API_KEY: z.ZodString;
     SANITY_PROJECT_ID: z.ZodString;
     SANITY_DATASET: z.ZodString;
-    SANITY_TOKEN: z.ZodString;
+    SANITY_API_TOKEN: z.ZodString;
     SANITY_API_VERSION: z.ZodDefault<z.ZodString>;
 }, "strip", z.ZodTypeAny, {
     DEEPL_API_KEY: string;
     SANITY_PROJECT_ID: string;
     SANITY_DATASET: string;
-    SANITY_TOKEN: string;
+    SANITY_API_TOKEN: string;
     SANITY_API_VERSION: string;
 }, {
     DEEPL_API_KEY: string;
     SANITY_PROJECT_ID: string;
     SANITY_DATASET: string;
-    SANITY_TOKEN: string;
+    SANITY_API_TOKEN: string;
     SANITY_API_VERSION?: string | undefined;
 }>;
 export type EnvironmentConfig = z.infer<typeof EnvironmentConfigSchema>;

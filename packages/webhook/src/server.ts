@@ -24,7 +24,7 @@ const EnvSchema = z.object({
   // Sanity connection details
   SANITY_PROJECT_ID: z.string().min(1),
   SANITY_DATASET: z.string().min(1),
-  SANITY_TOKEN: z.string().min(1),
+  SANITY_API_TOKEN: z.string().min(1),
   SANITY_API_VERSION: z.string().default('2024-01-01'),
 });
 
@@ -83,7 +83,7 @@ class WebhookServer {
     const sanityConfig = {
       SANITY_PROJECT_ID: this.config.SANITY_PROJECT_ID,
       SANITY_DATASET: this.config.SANITY_DATASET,
-      SANITY_TOKEN: this.config.SANITY_TOKEN,
+      SANITY_API_TOKEN: this.config.SANITY_API_TOKEN,
       SANITY_API_VERSION: this.config.SANITY_API_VERSION,
       DEEPL_API_KEY: '', // Not needed for webhook
     };

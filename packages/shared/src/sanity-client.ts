@@ -11,7 +11,7 @@ export class SanityArticleClient {
     this.client = createClient({
       projectId: config.SANITY_PROJECT_ID,
       dataset: config.SANITY_DATASET,
-      token: config.SANITY_TOKEN,
+      token: config.SANITY_API_TOKEN,
       apiVersion: config.SANITY_API_VERSION,
       useCdn: false, // We need fresh data for mutations
     });

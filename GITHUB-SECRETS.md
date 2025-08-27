@@ -32,7 +32,7 @@ Value: your_sanity_project_id
 Name: SANITY_DATASET  
 Value: production
 
-Name: SANITY_TOKEN
+Name: SANITY_API_TOKEN
 Value: your_sanity_api_token
 
 Name: SANITY_API_VERSION
@@ -139,7 +139,7 @@ pnpm --filter worker start translate <document-id> --dry-run
 - [ ] ✅ DEEPL_API_KEY 設定済み
 - [ ] ✅ SANITY_PROJECT_ID 設定済み  
 - [ ] ✅ SANITY_DATASET 設定済み
-- [ ] ✅ SANITY_TOKEN 設定済み
+- [ ] ✅ SANITY_API_TOKEN 設定済み
 - [ ] ✅ SANITY_API_VERSION 設定済み
 - [ ] ✅ SANITY_WEBHOOK_SECRET 設定済み
 - [ ] ✅ GH_PAT 設定済み

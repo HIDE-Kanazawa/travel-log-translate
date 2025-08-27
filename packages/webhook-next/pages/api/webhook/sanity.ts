@@ -20,7 +20,7 @@ const EnvSchema = z.object({
   DEBUG_SIGNATURE: z.string().optional(),
   SANITY_PROJECT_ID: z.string().min(1),
   SANITY_DATASET: z.string().min(1),
-  SANITY_TOKEN: z.string().min(1),
+  SANITY_API_TOKEN: z.string().min(1),
   SANITY_API_VERSION: z.string().default('2024-01-01'),
   // Optional: blog rebuild targets
   BLOG_GITHUB_OWNER: z.string().optional(),
@@ -63,7 +63,7 @@ function init() {
   sanityClient = createClient({
     projectId: appEnv.SANITY_PROJECT_ID,
     dataset: appEnv.SANITY_DATASET,
-    token: appEnv.SANITY_TOKEN,
+    token: appEnv.SANITY_API_TOKEN,
     apiVersion: appEnv.SANITY_API_VERSION,
     useCdn: false,
   });

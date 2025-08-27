@@ -7,7 +7,7 @@ describe('Worker CLI', () => {
       'DEEPL_API_KEY',
       'SANITY_PROJECT_ID', 
       'SANITY_DATASET',
-      'SANITY_TOKEN',
+      'SANITY_API_TOKEN',
       'SANITY_API_VERSION'
     ];
 
@@ -15,7 +15,7 @@ describe('Worker CLI', () => {
     process.env.DEEPL_API_KEY = 'test-key';
     process.env.SANITY_PROJECT_ID = 'test-project';
     process.env.SANITY_DATASET = 'test-dataset';
-    process.env.SANITY_TOKEN = 'test-token';
+    process.env.SANITY_API_TOKEN = 'test-token';
     process.env.SANITY_API_VERSION = '2024-01-01';
 
     requiredEnvVars.forEach(envVar => {
@@ -28,7 +28,7 @@ describe('Worker CLI', () => {
     expect(typeof process.env.DEEPL_API_KEY).toBe('string');
     expect(typeof process.env.SANITY_PROJECT_ID).toBe('string'); 
     expect(typeof process.env.SANITY_DATASET).toBe('string');
-    expect(typeof process.env.SANITY_TOKEN).toBe('string');
+    expect(typeof process.env.SANITY_API_TOKEN).toBe('string');
     expect(typeof process.env.SANITY_API_VERSION).toBe('string');
   });
 });

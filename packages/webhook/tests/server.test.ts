@@ -43,7 +43,7 @@ describe('WebhookServer', () => {
     // Sanity connection details for smart translation
     SANITY_PROJECT_ID: 'test-project',
     SANITY_DATASET: 'test-dataset',
-    SANITY_TOKEN: 'test-sanity-token',
+    SANITY_API_TOKEN: 'test-sanity-token',
     SANITY_API_VERSION: '2024-01-01',
   };;
 

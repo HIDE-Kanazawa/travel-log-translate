@@ -41,7 +41,7 @@ const EnvSchema = z.object({
   // Sanity connection details
   SANITY_PROJECT_ID: z.string().min(1),
   SANITY_DATASET: z.string().min(1),
-  SANITY_TOKEN: z.string().min(1),
+  SANITY_API_TOKEN: z.string().min(1),
   SANITY_API_VERSION: z.string().default('2024-01-01'),
   // Blog specific GitHub settings (optional)
   BLOG_GITHUB_OWNER: z.string().optional(),
@@ -141,7 +141,7 @@ function initializeServices() {
     sanityClient = createClient({
       projectId: appEnv.SANITY_PROJECT_ID,
       dataset: appEnv.SANITY_DATASET,
-      token: appEnv.SANITY_TOKEN,
+      token: appEnv.SANITY_API_TOKEN,
       apiVersion: appEnv.SANITY_API_VERSION,
       useCdn: false, // We need fresh data for webhooks
     });

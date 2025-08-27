@@ -26,7 +26,7 @@ jobs:
       SANITY_PROJECT_ID: ${{ secrets.SANITY_PROJECT_ID }}
       SANITY_DATASET: ${{ secrets.SANITY_DATASET }}
       # Use existing repository secret; must be a token with write perms
-      SANITY_TOKEN: ${{ secrets.SANITY_TOKEN }}
+      SANITY_API_TOKEN: ${{ secrets.SANITY_API_TOKEN }}
       # Optional; define this secret if you want to pin API version
       SANITY_API_VERSION: ${{ secrets.SANITY_API_VERSION }}
 
@@ -110,7 +110,7 @@ jobs:
           DEEPL_API_KEY: ${{ secrets.DEEPL_API_KEY }}
           SANITY_PROJECT_ID: ${{ secrets.SANITY_PROJECT_ID }}
           SANITY_DATASET: ${{ secrets.SANITY_DATASET }}
-          SANITY_TOKEN: ${{ secrets.SANITY_TOKEN }}
+          SANITY_API_TOKEN: ${{ secrets.SANITY_API_TOKEN }}
         run: |
           set -euo pipefail
           echo "📈 Collecting post-translation stats..."
@@ -141,7 +141,7 @@ jobs:
         env:
           SANITY_PROJECT_ID: ${{ secrets.SANITY_PROJECT_ID }}
           SANITY_DATASET: ${{ secrets.SANITY_DATASET }}
-          SANITY_TOKEN: ${{ secrets.SANITY_TOKEN }}
+          SANITY_API_TOKEN: ${{ secrets.SANITY_API_TOKEN }}
           SANITY_API_VERSION: ${{ secrets.SANITY_API_VERSION }}
         run: |
           set -euo pipefail
@@ -155,7 +155,7 @@ PY
 )
           URL="https://${SANITY_PROJECT_ID}.api.sanity.io/v${SANITY_API_VERSION:-2024-01-01}/data/query/${SANITY_DATASET}?query=${ENCODED_QUERY}"
           echo "🔎 GROQ: $QUERY"
-          http_code=$(curl -sS -o sanity-query.json -w "%{http_code}" -H "Authorization: Bearer ${SANITY_TOKEN}" "$URL") || true
+          http_code=$(curl -sS -o sanity-query.json -w "%{http_code}" -H "Authorization: Bearer ${SANITY_API_TOKEN}" "$URL") || true
           echo "🌐 HTTP ${http_code}"
           echo "📦 Query result (first 200 lines):"
           sed -n '1,200p' sanity-query.json || true
@@ -178,7 +178,7 @@ PY
           DEEPL_API_KEY: ${{ secrets.DEEPL_API_KEY }}
           SANITY_PROJECT_ID: ${{ secrets.SANITY_PROJECT_ID }}
           SANITY_DATASET: ${{ secrets.SANITY_DATASET }}
-          SANITY_TOKEN: ${{ secrets.SANITY_TOKEN }}
+          SANITY_API_TOKEN: ${{ secrets.SANITY_API_TOKEN }}
         run: |
           set -euo pipefail
           echo "🔍 Running stats --json for connectivity check..."
@@ -190,7 +190,7 @@ PY
           DEEPL_API_KEY: ${{ secrets.DEEPL_API_KEY }}
           SANITY_PROJECT_ID: ${{ secrets.SANITY_PROJECT_ID }}
           SANITY_DATASET: ${{ secrets.SANITY_DATASET }}
-          SANITY_TOKEN: ${{ secrets.SANITY_TOKEN }}
+          SANITY_API_TOKEN: ${{ secrets.SANITY_API_TOKEN }}
         run: |
           set -euo pipefail
           echo "🔍 Checking document stats and API quota..."
@@ -246,7 +246,7 @@ PY
           DEEPL_API_KEY: ${{ secrets.DEEPL_API_KEY }}
           SANITY_PROJECT_ID: ${{ secrets.SANITY_PROJECT_ID }}
           SANITY_DATASET: ${{ secrets.SANITY_DATASET }}
-          SANITY_TOKEN: ${{ secrets.SANITY_TOKEN }}
+          SANITY_API_TOKEN: ${{ secrets.SANITY_API_TOKEN }}
         run: |
           echo "🌍 Starting translation process..."
           set -euo pipefail
@@ -278,7 +278,7 @@ PY
           DEEPL_API_KEY: ${{ secrets.DEEPL_API_KEY }}
           SANITY_PROJECT_ID: ${{ secrets.SANITY_PROJECT_ID }}
           SANITY_DATASET: ${{ secrets.SANITY_DATASET }}
-          SANITY_TOKEN: ${{ secrets.SANITY_TOKEN }}
+          SANITY_API_TOKEN: ${{ secrets.SANITY_API_TOKEN }}
         run: |
           echo "🔍 Validating translation results..."
           set -euo pipefail

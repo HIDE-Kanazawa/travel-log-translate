@@ -24,7 +24,7 @@ Repository Settings → Secrets and variables → Actions → "New repository se
 DEEPL_API_KEY=****
 SANITY_PROJECT_ID=****
 SANITY_DATASET=****
-SANITY_TOKEN=****
+SANITY_API_TOKEN=****
 SANITY_WEBHOOK_SECRET=****
 GH_PAT=<Personal Access Token>
 ```

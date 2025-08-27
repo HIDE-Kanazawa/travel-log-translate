@@ -216,7 +216,7 @@ export const EnvironmentConfigSchema = z.object({
   DEEPL_API_KEY: z.string().min(1),
   SANITY_PROJECT_ID: z.string().min(1),
   SANITY_DATASET: z.string().min(1),
-  SANITY_TOKEN: z.string().min(1),
+  SANITY_API_TOKEN: z.string().min(1),
   SANITY_API_VERSION: z.string().default('2024-01-01'),
 });
 

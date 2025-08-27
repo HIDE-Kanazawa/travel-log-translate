@@ -49,7 +49,7 @@ cp .env.example .env
 DEEPL_API_KEY=your_deepl_api_key_here
 SANITY_PROJECT_ID=your_sanity_project_id
 SANITY_DATASET=production
-SANITY_TOKEN=your_sanity_api_token
+SANITY_API_TOKEN=your_sanity_api_token
 SANITY_API_VERSION=2024-01-01
 SANITY_WEBHOOK_SECRET=your_webhook_secret_here
 GITHUB_TOKEN=your_github_personal_access_token
@@ -65,7 +65,7 @@ GITHUB_REPO=travel-log-translate
 DEEPL_API_KEY=****
 SANITY_PROJECT_ID=****
 SANITY_DATASET=****
-SANITY_TOKEN=****
+SANITY_API_TOKEN=****
 SANITY_WEBHOOK_SECRET=****
 GH_PAT=<Personal Access Token>
 ```
